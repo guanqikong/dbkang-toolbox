@@ -8,6 +8,7 @@ import { rcedit } from 'rcedit'
 const here = dirname(fileURLToPath(import.meta.url))
 const browserRoot = resolve(here, '..')
 const require = createRequire(import.meta.url)
+const { inject } = require('postject')
 const playwrightRoot = dirname(require.resolve('playwright-core'))
 const registry = JSON.parse(readFileSync(resolve(playwrightRoot, 'browsers.json'), 'utf8'))
 const pinned = registry.browsers.find((browser) => browser.name === 'chromium')
@@ -25,6 +26,10 @@ if (pinned?.browserVersion !== config.chromiumVersion) {
   throw new Error(`固定 Chromium 版本不一致：${pinned?.browserVersion} != ${config.chromiumVersion}`)
 }
 if (typeof rcedit !== 'function') throw new Error('rcedit 不可用')
+if (typeof inject !== 'function') throw new Error('postject 编程接口不可用')
+if (windowsBuildSource.includes('pnpm.cmd')) {
+  throw new Error('Windows 构建不得通过 spawnSync 启动 pnpm.cmd')
+}
 if (windowsBuildSource.includes("run(executable, ['--version']")) {
   throw new Error('不得通过启动 chrome.exe --version 校验版本，该进程可能在 Windows 上持续运行')
 }

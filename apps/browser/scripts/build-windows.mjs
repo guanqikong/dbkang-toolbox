@@ -22,6 +22,8 @@ if (process.platform !== 'win32') throw new Error('Windows 便携包必须在 Wi
 if (process.arch !== 'x64') throw new Error('阿康浏览器仅构建 Windows x64')
 
 const here = dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)
+const { inject } = require('postject')
 const browserRoot = resolve(here, '..')
 const repositoryRoot = resolve(browserRoot, '../..')
 const buildRoot = resolve(browserRoot, 'dist/windows-build')
@@ -131,7 +133,6 @@ writeFileSync(
 )
 
 function installChromium() {
-  const require = createRequire(import.meta.url)
   const playwrightRoot = dirname(require.resolve('playwright-core'))
   const cli = resolve(playwrightRoot, 'cli.js')
   const registry = JSON.parse(readFileSync(resolve(playwrightRoot, 'browsers.json'), 'utf8'))
@@ -230,20 +231,9 @@ async function createSeaExecutable(name, output, assets) {
       OriginalFilename: basenamePortable(output),
     },
   })
-  run(
-    'pnpm.cmd',
-    [
-      'exec',
-      'postject',
-      output,
-      'NODE_SEA_BLOB',
-      blob,
-      '--sentinel-fuse',
-      'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2',
-    ],
-    undefined,
-    browserRoot,
-  )
+  await inject(output, 'NODE_SEA_BLOB', readFileSync(blob), {
+    sentinelFuse: 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2',
+  })
 }
 
 function buildManifest(fullArchivePath) {
