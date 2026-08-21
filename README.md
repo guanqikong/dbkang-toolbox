@@ -31,7 +31,7 @@ pnpm dev
 
 产品入口：`http://localhost:8000`。学生端位于 `/toolbox/`，管理端位于 `/admin/`，API 位于 `/api/v1/`，Userscript 位于 `/updates/DBKangToolbox.user.js`；它们共用同一协议、域名和端口。首次启动后请在管理端添加真实课程。
 
-Docker Compose 把学生端挂载到 `/toolbox/`、管理端挂载到 `/admin/`。部署前需按 [`server/assets/lofi/README.md`](server/assets/lofi/README.md) 放入媒体文件，并把 `DBKANG_PUBLIC_BASE_URL` 设置为对外域名。
+Docker Compose 把学生端挂载到 `/toolbox/`、管理端挂载到 `/admin/`。Lo-fi 视频与环境音位于 `server/assets/lofi/`，构建镜像时写入 `/app/assets/lofi/`；修改后需要重新构建镜像。歌曲不会进入镜像，运行时只读挂载 `server/assets/music/` 到 `/app/assets/music/`。每个歌单使用一个子目录并在其中放置 MP3，增删歌曲后重启服务以重新扫描。部署前还需把 `DBKANG_PUBLIC_BASE_URL` 设置为对外域名。
 
 ## 验证
 

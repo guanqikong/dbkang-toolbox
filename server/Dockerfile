@@ -32,13 +32,14 @@ RUN uv sync --no-dev
 COPY server/alembic.ini ./
 COPY server/migrations ./migrations
 COPY server/app ./app
-COPY server/assets ./assets
+# Lo-fi 媒体属于版本化前端资源，随镜像构建写入；歌曲库由运行时挂载。
+COPY server/assets/lofi ./assets/lofi
 COPY --from=web-builder /src/apps/toolbox/dist ./static/toolbox
 COPY --from=web-builder /src/apps/admin/dist ./static/admin
 COPY --from=web-builder /src/apps/userscript/dist ./static/updates
 COPY release/browser ./static/updates
 
-RUN mkdir -p /app/data /app/assets /app/static/toolbox /app/static/admin /app/static/updates
+RUN mkdir -p /app/data /app/assets/music /app/static/toolbox /app/static/admin /app/static/updates
 
 EXPOSE 8000
 CMD ["sh", "-c", "uv run alembic upgrade head && exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"]

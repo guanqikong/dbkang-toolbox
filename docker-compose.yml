@@ -17,7 +17,7 @@ services:
       DBKANG_CORS_ORIGINS: ${DBKANG_CORS_ORIGINS:-}
     volumes:
       - dbkang-data:/app/data
-      - ./server/assets:/app/assets:ro
+      - ./server/assets/music:/app/assets/music:ro
     ports:
       - "8000:8000"
 
