@@ -9,6 +9,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { absoluteAsset, heartbeatFocus, pauseFocus, startFocus, stopFocus } from '../api'
 
 type TimerPhase = 'idle' | 'focus' | 'rest'
+type AmbienceType = Exclude<UserPreferences['ambienceType'], null>
+
+interface PreparedAmbience {
+  buffer: AudioBuffer
+  loopStart: number
+  loopEnd: number
+}
 
 const props = defineProps<{
   context: ToolboxContext
@@ -32,8 +39,8 @@ const backgroundReady = ref(false)
 const backgroundFailed = ref(false)
 const connected = ref(navigator.onLine)
 const ambienceError = ref<string | null>(null)
-const failedAmbiences = ref<Array<Exclude<UserPreferences['ambienceType'], null>>>([])
-const ambienceBuffers = new Map<Exclude<UserPreferences['ambienceType'], null>, AudioBuffer>()
+const failedAmbiences = ref<AmbienceType[]>([])
+const ambienceBuffers = new Map<AmbienceType, PreparedAmbience>()
 let ambienceContext: AudioContext | null = null
 let ambienceGain: GainNode | null = null
 let ambienceSource: AudioBufferSourceNode | null = null
@@ -335,15 +342,17 @@ async function applyAmbience(value: UserPreferences['ambienceType']): Promise<vo
     try {
       await nextTick()
       const context = ensureAmbienceContext()
-      const buffer = await loadAmbienceBuffer(context, value)
+      const ambience = await loadAmbienceBuffer(context, value)
       if (requestId !== ambienceRequestId || currentAmbience !== value) return
       const source = context.createBufferSource()
-      source.buffer = buffer
+      source.buffer = ambience.buffer
       source.loop = true
+      source.loopStart = ambience.loopStart
+      source.loopEnd = ambience.loopEnd
       const gain = ambienceGain
       if (!gain) throw new Error('环境音输出节点尚未初始化')
       source.connect(gain)
-      source.start()
+      source.start(0, ambience.loopStart)
       ambienceSource = source
       void context.resume().catch(() => undefined)
     } catch {
@@ -374,15 +383,69 @@ function ensureAmbienceContext(): AudioContext {
 
 async function loadAmbienceBuffer(
   context: AudioContext,
-  value: Exclude<UserPreferences['ambienceType'], null>,
-): Promise<AudioBuffer> {
+  value: AmbienceType,
+): Promise<PreparedAmbience> {
   const cached = ambienceBuffers.get(value)
   if (cached) return cached
   const response = await fetch(absoluteAsset(`/assets/lofi/${value}.mp3`))
   if (!response.ok) throw new Error(`环境音加载失败：${response.status}`)
-  const buffer = await context.decodeAudioData(await response.arrayBuffer())
-  ambienceBuffers.set(value, buffer)
-  return buffer
+  const decoded = await context.decodeAudioData(await response.arrayBuffer())
+  const ambience = prepareAmbienceLoop(decoded)
+  ambienceBuffers.set(value, ambience)
+  return ambience
+}
+
+function prepareAmbienceLoop(buffer: AudioBuffer): PreparedAmbience {
+  const threshold = 10 ** (-50 / 20)
+  let firstAudibleFrame = 0
+  let lastAudibleFrame = buffer.length
+
+  while (firstAudibleFrame < lastAudibleFrame && !isAudibleFrame(buffer, firstAudibleFrame, threshold)) {
+    firstAudibleFrame += 1
+  }
+  while (lastAudibleFrame > firstAudibleFrame && !isAudibleFrame(buffer, lastAudibleFrame - 1, threshold)) {
+    lastAudibleFrame -= 1
+  }
+
+  const audibleFrames = lastAudibleFrame - firstAudibleFrame
+  if (audibleFrames < 4) {
+    return { buffer, loopStart: 0, loopEnd: buffer.duration }
+  }
+
+  const crossfadeFrames = Math.min(
+    Math.round(buffer.sampleRate * 0.08),
+    Math.floor(audibleFrames / 4),
+  )
+  if (crossfadeFrames < 2) {
+    return {
+      buffer,
+      loopStart: firstAudibleFrame / buffer.sampleRate,
+      loopEnd: lastAudibleFrame / buffer.sampleRate,
+    }
+  }
+
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    const samples = buffer.getChannelData(channel)
+    for (let offset = 0; offset < crossfadeFrames; offset += 1) {
+      const angle = (offset / (crossfadeFrames - 1)) * Math.PI / 2
+      const tailFrame = lastAudibleFrame - crossfadeFrames + offset
+      samples[tailFrame] = samples[tailFrame]! * Math.cos(angle)
+        + samples[firstAudibleFrame + offset]! * Math.sin(angle)
+    }
+  }
+
+  return {
+    buffer,
+    loopStart: (firstAudibleFrame + crossfadeFrames) / buffer.sampleRate,
+    loopEnd: lastAudibleFrame / buffer.sampleRate,
+  }
+}
+
+function isAudibleFrame(buffer: AudioBuffer, frame: number, threshold: number): boolean {
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    if (Math.abs(buffer.getChannelData(channel)[frame]!) >= threshold) return true
+  }
+  return false
 }
 
 function stopAmbienceSource(): void {
@@ -399,7 +462,7 @@ function resumeAmbience(): void {
 }
 
 function handleAmbienceError(
-  value: Exclude<UserPreferences['ambienceType'], null>,
+  value: AmbienceType,
   requestId: number,
 ): void {
   if (requestId !== ambienceRequestId) return
