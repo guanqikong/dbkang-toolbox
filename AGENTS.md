@@ -26,7 +26,7 @@ Vitest tests use `*.test.ts` beside their source; pytest files use `server/tests
 
 History is minimal but includes Conventional Commit syntax (`fix(scope): summary`); continue with concise imperative messages such as `feat(userscript): sync homework scores`. Pull requests should explain behavior and risk, link relevant issues, list verification commands, and include screenshots for visible UI changes. Call out schema migrations, configuration changes, and generated Windows artifacts explicitly.
 
-After every completed modification, increment the patch version by one unless the user requests another versioning scheme. Then commit all task-related changes and immediately push the current branch to its configured remote; do not leave completed work only in the working tree.
+Update version numbers only when the user explicitly requests it. After every completed modification, commit all task-related changes and immediately push the current branch to its configured remote; do not leave completed work only in the working tree.
 
 ## Security & Domain Rules
 
