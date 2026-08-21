@@ -4,7 +4,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '../../', '')
   const apiBaseUrl = (env.VITE_DBKANG_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
   const toolboxUrl = (env.VITE_DBKANG_TOOLBOX_URL || 'http://localhost:8000/toolbox').replace(/\/$/, '')
-  const version = env.DBKANG_VERSION || '0.1.4'
+  const version = env.DBKANG_VERSION || '0.1.0'
   const connectHosts = [
     'chaoxing.com',
     new URL(apiBaseUrl).hostname,

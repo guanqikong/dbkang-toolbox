@@ -55,7 +55,7 @@ pnpm server:test
 Windows x64 构建机执行：
 
 ```powershell
-$env:DBKANG_VERSION="0.1.4"
+$env:DBKANG_VERSION="0.1.0"
 $env:DBKANG_PUBLIC_BASE_URL="https://toolbox.example.com"
 pnpm --filter @dbkang/userscript build
 pnpm --filter @dbkang/browser build:windows
