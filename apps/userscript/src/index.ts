@@ -20,6 +20,7 @@ const API_BASE_URL = __DBKANG_API_BASE_URL__
 const TOOLBOX_URL = __DBKANG_TOOLBOX_URL__
 const NAV_ID = 'dbkang-toolbox-nav'
 const FRAME_ID = 'dbkang-toolbox-frame'
+const STYLE_ID = 'dbkang-toolbox-style'
 
 void initialize()
 
@@ -68,11 +69,13 @@ function installToolbox(
   context: ToolboxContext,
   homeworkListUrl: string | null,
 ): { open: (tab?: string) => void } {
+  installToolboxStyle()
   const navButton = createNavigationButton()
   const navigationHost = findNavigationHost()
   navigationHost.append(navButton)
 
   let frame: HTMLIFrameElement | null = null
+  let isOpen = false
   let hiddenNodes: Array<{ node: HTMLElement; display: string }> = []
   let layoutReference: HTMLIFrameElement | null = null
   const layoutObserver = new MutationObserver(() => syncFrameLayout())
@@ -90,15 +93,15 @@ function installToolbox(
     const contentNodes = reference || contentHost === document.body
       ? [...document.querySelectorAll<HTMLElement>('iframe[id^="frame_content-"]')]
       : [...contentHost.children].filter((node): node is HTMLElement => node instanceof HTMLElement)
-    const openingFromClosed = !frame || frame.style.display === 'none'
+    const openingFromClosed = !isOpen
 
     if (!frame) {
       const newFrame = document.createElement('iframe')
       newFrame.id = FRAME_ID
       newFrame.title = 'DBKang Toolbox'
       newFrame.allow = 'autoplay'
+      newFrame.dataset.dbkangState = 'closed'
       Object.assign(newFrame.style, {
-        display: 'block',
         border: '0',
         background: '#f6f8fb',
       })
@@ -126,15 +129,19 @@ function installToolbox(
     const target = new URL(`${TOOLBOX_URL}/`)
     target.searchParams.set('tab', tab)
     if (frame.src !== target.href) frame.src = target.href
-    frame.style.display = 'block'
+    isOpen = true
+    setFrameState(frame, true)
     navButton.dataset.active = 'true'
     if (context.role === 'student') void syncHomework(context, homeworkListUrl)
   }
 
   const close = (): void => {
-    if (!frame || frame.style.display === 'none') return
-    frame.style.display = 'none'
+    if (!frame) return
+    isOpen = false
+    setFrameState(frame, false)
+    layoutObserver.disconnect()
     hiddenNodes.forEach(({ node, display }) => { node.style.display = display })
+    hiddenNodes = []
     navButton.dataset.active = 'false'
   }
 
@@ -144,12 +151,14 @@ function installToolbox(
     open()
   })
 
-  document.addEventListener('click', (event) => {
+  const closeFromChaoxingNavigation = (event: Event): void => {
     const target = event.target
     if (!(target instanceof Element) || target.closest(`#${NAV_ID}`)) return
     const navHost = findNavigationHost(false)
     if (navHost?.contains(target)) close()
-  }, true)
+  }
+  document.addEventListener('pointerdown', closeFromChaoxingNavigation, true)
+  document.addEventListener('click', closeFromChaoxingNavigation, true)
 
   window.addEventListener('message', (event: MessageEvent<unknown>) => {
     if (!frame || event.source !== frame.contentWindow || !event.data || typeof event.data !== 'object') return
@@ -169,6 +178,29 @@ function installToolbox(
   })
 
   return { open }
+}
+
+function installToolboxStyle(): void {
+  if (document.getElementById(STYLE_ID)) return
+  const style = document.createElement('style')
+  style.id = STYLE_ID
+  style.textContent = `
+#${FRAME_ID}[data-dbkang-state="closed"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+#${FRAME_ID}[data-dbkang-state="open"] {
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}`
+  const styleHost = document.head || document.documentElement
+  styleHost.append(style)
+}
+
+function setFrameState(frame: HTMLIFrameElement, open: boolean): void {
+  frame.dataset.dbkangState = open ? 'open' : 'closed'
 }
 
 function createNavigationButton(): HTMLElement {
