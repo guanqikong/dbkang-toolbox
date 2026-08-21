@@ -149,10 +149,26 @@ function installChromium() {
   if (!executable || !executable.toLowerCase().includes('chrome-win')) {
     throw new Error('未找到 Playwright 的 Windows Chromium headed 构建')
   }
-  const versionResult = run(executable, ['--version'], undefined, dirname(executable), true)
-  if (!versionResult.stdout.includes(config.chromiumVersion)) {
-    throw new Error(`Chromium 版本不符：期望 ${config.chromiumVersion}，实际 ${versionResult.stdout.trim()}`)
+  console.log('正在读取 Chromium 文件版本…')
+  const versionResult = run(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      '(Get-Item -LiteralPath $args[0]).VersionInfo.ProductVersion',
+      executable,
+    ],
+    undefined,
+    dirname(executable),
+    true,
+    30_000,
+  )
+  const productVersion = versionResult.stdout.trim()
+  if (!productVersion.includes(config.chromiumVersion)) {
+    throw new Error(`Chromium 版本不符：期望 ${config.chromiumVersion}，实际 ${productVersion || '未知'}`)
   }
+  console.log('正在复制 Chromium 便携文件…')
   cpSync(dirname(executable), resolve(portable, 'browser'), { recursive: true })
   const iconScript = [
     'Add-Type -AssemblyName System.Drawing',
@@ -266,13 +282,14 @@ function compressDirectory(source, archive) {
   )
 }
 
-function run(command, args, extraEnvironment, cwd = repositoryRoot, capture = false) {
+function run(command, args, extraEnvironment, cwd = repositoryRoot, capture = false, timeout) {
   const result = spawnSync(command, args, {
     cwd,
     env: { ...process.env, ...extraEnvironment },
     windowsHide: true,
     encoding: 'utf8',
     stdio: capture ? 'pipe' : 'inherit',
+    timeout,
   })
   if (result.error) throw result.error
   if (result.status !== 0) throw new Error(`${command} 执行失败（${result.status}）：${result.stderr || ''}`)
