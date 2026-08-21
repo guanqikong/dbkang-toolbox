@@ -33,8 +33,12 @@ const backgroundFailed = ref(false)
 const connected = ref(navigator.onLine)
 const ambienceError = ref<string | null>(null)
 const failedAmbiences = ref<Array<Exclude<UserPreferences['ambienceType'], null>>>([])
-const ambienceAudio = new Audio()
+const ambienceBuffers = new Map<Exclude<UserPreferences['ambienceType'], null>, AudioBuffer>()
+let ambienceContext: AudioContext | null = null
+let ambienceGain: GainNode | null = null
+let ambienceSource: AudioBufferSourceNode | null = null
 let currentAmbience: UserPreferences['ambienceType'] = null
+let ambienceRequestId = 0
 let ticker: number | null = null
 let heartbeatTimer: number | null = null
 let transitionPending = false
@@ -62,23 +66,24 @@ const phaseLabel = computed(() => {
 })
 
 onMounted(() => {
-  ambienceAudio.loop = true
-  ambienceAudio.preload = 'auto'
-  ambienceAudio.volume = props.preferences.ambienceVolume
-  ambienceAudio.addEventListener('error', handleAmbienceError)
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
   window.addEventListener('beforeunload', stopOnUnload)
+  window.addEventListener('pointerdown', resumeAmbience, { passive: true })
   if (props.preferences.ambienceType) void applyAmbience(props.preferences.ambienceType)
 })
 
 onBeforeUnmount(() => {
   clearTimers()
-  ambienceAudio.pause()
-  ambienceAudio.removeEventListener('error', handleAmbienceError)
+  stopAmbienceSource()
+  void ambienceContext?.close()
+  ambienceContext = null
+  ambienceGain = null
+  ambienceBuffers.clear()
   window.removeEventListener('online', handleOnline)
   window.removeEventListener('offline', handleOffline)
   window.removeEventListener('beforeunload', stopOnUnload)
+  window.removeEventListener('pointerdown', resumeAmbience)
   document.title = 'DBKang Toolbox'
   emit('focus-state', false)
   if (phase.value === 'focus' && sessionId.value) {
@@ -322,17 +327,24 @@ function updateTimerSetting(key: 'focusMinutes' | 'restMinutes' | 'rounds', valu
 async function applyAmbience(value: UserPreferences['ambienceType']): Promise<void> {
   if (value && failedAmbiences.value.includes(value)) return
   ambienceError.value = null
-  ambienceAudio.pause()
-  ambienceAudio.removeAttribute('src')
+  const requestId = ++ambienceRequestId
+  stopAmbienceSource()
   currentAmbience = value
   if (value) {
-    ambienceAudio.src = absoluteAsset(`/assets/lofi/${value}.mp3`)
-    ambienceAudio.load()
-    await nextTick()
     try {
-      await ambienceAudio.play()
+      await nextTick()
+      const context = ensureAmbienceContext()
+      const buffer = await loadAmbienceBuffer(context, value)
+      if (requestId !== ambienceRequestId || currentAmbience !== value) return
+      const source = context.createBufferSource()
+      source.buffer = buffer
+      source.loop = true
+      source.connect(ambienceGain!)
+      source.start()
+      ambienceSource = source
+      void context.resume()
     } catch {
-      handleAmbienceError()
+      handleAmbienceError(value, requestId)
       return
     }
   }
@@ -341,15 +353,54 @@ async function applyAmbience(value: UserPreferences['ambienceType']): Promise<vo
 
 function changeAmbienceVolume(value: number): void {
   const safe = Math.max(0, Math.min(1, value))
-  ambienceAudio.volume = safe
+  if (ambienceContext && ambienceGain) {
+    ambienceGain.gain.setValueAtTime(safe, ambienceContext.currentTime)
+  }
   emitPreferences({ ambienceVolume: safe })
 }
 
-function handleAmbienceError(): void {
-  ambienceAudio.pause()
-  ambienceAudio.removeAttribute('src')
-  if (currentAmbience && !failedAmbiences.value.includes(currentAmbience)) {
-    failedAmbiences.value = [...failedAmbiences.value, currentAmbience]
+function ensureAmbienceContext(): AudioContext {
+  if (!ambienceContext) {
+    ambienceContext = new AudioContext()
+    ambienceGain = ambienceContext.createGain()
+    ambienceGain.gain.value = props.preferences.ambienceVolume
+    ambienceGain.connect(ambienceContext.destination)
+  }
+  return ambienceContext
+}
+
+async function loadAmbienceBuffer(
+  context: AudioContext,
+  value: Exclude<UserPreferences['ambienceType'], null>,
+): Promise<AudioBuffer> {
+  const cached = ambienceBuffers.get(value)
+  if (cached) return cached
+  const response = await fetch(absoluteAsset(`/assets/lofi/${value}.mp3`))
+  if (!response.ok) throw new Error(`环境音加载失败：${response.status}`)
+  const buffer = await context.decodeAudioData(await response.arrayBuffer())
+  ambienceBuffers.set(value, buffer)
+  return buffer
+}
+
+function stopAmbienceSource(): void {
+  if (!ambienceSource) return
+  ambienceSource.stop()
+  ambienceSource.disconnect()
+  ambienceSource = null
+}
+
+function resumeAmbience(): void {
+  if (ambienceContext?.state === 'suspended') void ambienceContext.resume()
+}
+
+function handleAmbienceError(
+  value: Exclude<UserPreferences['ambienceType'], null>,
+  requestId: number,
+): void {
+  if (requestId !== ambienceRequestId) return
+  stopAmbienceSource()
+  if (!failedAmbiences.value.includes(value)) {
+    failedAmbiences.value = [...failedAmbiences.value, value]
   }
   ambienceError.value = '该环境音加载失败，已禁用；其他功能不受影响。'
   currentAmbience = null
