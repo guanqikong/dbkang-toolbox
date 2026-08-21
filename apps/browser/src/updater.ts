@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
@@ -21,7 +21,7 @@ import {
   sha256File,
   writeJson,
 } from './common'
-import { confirmUpdate, showMessage } from './windows'
+import { confirmUpdate, expandArchive, showMessage } from './windows'
 
 interface UpdatePlan {
   token: string
@@ -177,12 +177,7 @@ async function stageFullPackage(
   if (sha256Bytes(bytes) !== manifest.full.sha256) throw new Error('完整包 SHA-256 校验失败')
   const archive = resolve(updateRoot, 'full.zip')
   writeFileSync(archive, bytes)
-  const expanded = spawnSync(
-    'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-Command', 'Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force', archive, staging],
-    { windowsHide: true, encoding: 'utf8' },
-  )
-  if (expanded.status !== 0) throw new Error(`完整包解压失败：${expanded.stderr}`)
+  expandArchive(archive, staging)
   verifyInstallation(staging, manifest)
 }
 

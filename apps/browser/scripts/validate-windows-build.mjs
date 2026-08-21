@@ -13,6 +13,11 @@ const registry = JSON.parse(readFileSync(resolve(playwrightRoot, 'browsers.json'
 const pinned = registry.browsers.find((browser) => browser.name === 'chromium')
 const config = JSON.parse(readFileSync(resolve(browserRoot, 'browser.config.json'), 'utf8'))
 const windowsBuildSource = readFileSync(resolve(browserRoot, 'scripts/build-windows.mjs'), 'utf8')
+const powershellSources = [
+  ['build-windows.mjs', windowsBuildSource],
+  ['src/sfx.ts', readFileSync(resolve(browserRoot, 'src/sfx.ts'), 'utf8')],
+  ['src/updater.ts', readFileSync(resolve(browserRoot, 'src/updater.ts'), 'utf8')],
+]
 
 if (config.platform !== 'win64' || config.channel !== 'stable') throw new Error('仅允许 stable/win64 构建')
 if (config.playwrightVersion !== '1.56.1') throw new Error('Playwright 版本未与依赖锁保持一致')
@@ -25,6 +30,11 @@ if (windowsBuildSource.includes("run(executable, ['--version']")) {
 }
 if (!windowsBuildSource.includes('.VersionInfo.ProductVersion')) {
   throw new Error('Windows 构建必须从 chrome.exe 文件元数据读取 Chromium 版本')
+}
+for (const [name, source] of powershellSources) {
+  if (source.includes('$args[')) {
+    throw new Error(`${name} 不得在 PowerShell -Command 后通过位置参数传递路径`)
+  }
 }
 
 for (const name of ['launcher', 'updater', 'sfx']) {

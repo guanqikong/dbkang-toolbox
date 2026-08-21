@@ -156,10 +156,9 @@ function installChromium() {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      '(Get-Item -LiteralPath $args[0]).VersionInfo.ProductVersion',
-      executable,
+      '(Get-Item -LiteralPath $env:DBKANG_CHROMIUM_EXECUTABLE).VersionInfo.ProductVersion',
     ],
-    undefined,
+    { DBKANG_CHROMIUM_EXECUTABLE: executable },
     dirname(executable),
     true,
     30_000,
@@ -172,12 +171,15 @@ function installChromium() {
   cpSync(dirname(executable), resolve(portable, 'browser'), { recursive: true })
   const iconScript = [
     'Add-Type -AssemblyName System.Drawing',
-    '$icon=[System.Drawing.Icon]::ExtractAssociatedIcon($args[0])',
-    '$stream=[System.IO.File]::Create($args[1])',
+    '$icon=[System.Drawing.Icon]::ExtractAssociatedIcon($env:DBKANG_CHROMIUM_EXECUTABLE)',
+    '$stream=[System.IO.File]::Create($env:DBKANG_CHROMIUM_ICON)',
     '$icon.Save($stream)',
     '$stream.Dispose()',
   ].join(';')
-  run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', iconScript, executable, chromiumIcon])
+  run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', iconScript], {
+    DBKANG_CHROMIUM_EXECUTABLE: executable,
+    DBKANG_CHROMIUM_ICON: chromiumIcon,
+  })
 }
 
 async function bundleEntry(name) {
@@ -275,10 +277,12 @@ function compressDirectory(source, archive) {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      "Compress-Archive -Path (Join-Path $args[0] '*') -DestinationPath $args[1] -CompressionLevel Optimal -Force",
-      source,
-      archive,
+      "Compress-Archive -Path (Join-Path $env:DBKANG_ARCHIVE_SOURCE '*') -DestinationPath $env:DBKANG_ARCHIVE_TARGET -CompressionLevel Optimal -Force",
     ],
+    {
+      DBKANG_ARCHIVE_SOURCE: source,
+      DBKANG_ARCHIVE_TARGET: archive,
+    },
   )
 }
 
