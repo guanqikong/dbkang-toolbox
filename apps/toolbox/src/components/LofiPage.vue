@@ -75,8 +75,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearTimers()
+  ambienceRequestId += 1
   stopAmbienceSource()
-  void ambienceContext?.close()
+  void ambienceContext?.close().catch(() => undefined)
   ambienceContext = null
   ambienceGain = null
   ambienceBuffers.clear()
@@ -339,10 +340,12 @@ async function applyAmbience(value: UserPreferences['ambienceType']): Promise<vo
       const source = context.createBufferSource()
       source.buffer = buffer
       source.loop = true
-      source.connect(ambienceGain!)
+      const gain = ambienceGain
+      if (!gain) throw new Error('环境音输出节点尚未初始化')
+      source.connect(gain)
       source.start()
       ambienceSource = source
-      void context.resume()
+      void context.resume().catch(() => undefined)
     } catch {
       handleAmbienceError(value, requestId)
       return
@@ -390,7 +393,9 @@ function stopAmbienceSource(): void {
 }
 
 function resumeAmbience(): void {
-  if (ambienceContext?.state === 'suspended') void ambienceContext.resume()
+  if (ambienceContext?.state === 'suspended') {
+    void ambienceContext.resume().catch(() => undefined)
+  }
 }
 
 function handleAmbienceError(
