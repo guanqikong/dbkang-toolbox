@@ -1,0 +1,155 @@
+body {
+  overflow-x: auto;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding-bottom: 64px;
+}
+
+.topbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: grid;
+  grid-template-columns: 300px 1fr 260px;
+  align-items: stretch;
+  min-height: 64px;
+  border-bottom: 1px solid var(--dbk-border);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.brand,
+.profile-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  border: 0;
+  color: var(--dbk-text);
+  text-align: left;
+  background: transparent;
+}
+
+.brand span,
+.profile-button span {
+  display: grid;
+  min-width: 0;
+}
+
+.brand strong,
+.profile-button strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand small,
+.profile-button small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--dbk-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar nav {
+  display: flex;
+  justify-content: center;
+}
+
+.nav-link {
+  position: relative;
+  min-width: 96px;
+  padding: 0 20px;
+  border: 0;
+  color: var(--dbk-text-muted);
+  background: transparent;
+}
+
+.nav-link::after {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  left: 20px;
+  height: 2px;
+  background: transparent;
+  content: '';
+}
+
+.nav-link:hover,
+.nav-link--active {
+  color: var(--dbk-primary);
+}
+
+.nav-link--active::after {
+  background: var(--dbk-primary);
+}
+
+.profile-button {
+  justify-self: end;
+  min-width: 240px;
+}
+
+.profile-button img {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--dbk-border);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.app-content {
+  width: min(1240px, calc(100vw - 64px));
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.app-content--room {
+  width: 100%;
+  height: calc(100vh - 128px);
+  min-height: 552px;
+  margin: 0;
+  padding: 0;
+}
+
+.state-page {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  color: var(--dbk-text-muted);
+}
+
+.state-page--error h1 {
+  margin: 20px 0 4px;
+  color: var(--dbk-text);
+  font-size: 22px;
+}
+
+.state-page--error p {
+  margin-bottom: 20px;
+}
+
+.loading-line {
+  width: 180px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--dbk-border);
+}
+
+.loading-line::after {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--dbk-primary);
+  animation: loading 1s ease-in-out infinite alternate;
+  content: '';
+}
+
+@keyframes loading {
+  to { transform: translateX(150%); }
+}

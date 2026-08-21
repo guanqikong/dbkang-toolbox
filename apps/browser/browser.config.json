@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "channel": "stable",
+  "platform": "win64",
+  "playwrightVersion": "1.56.1",
+  "chromiumVersion": "141.0.7390.37",
+  "homePage": "https://i.chaoxing.com/",
+  "feedPath": "/updates/browser/stable/latest.json"
+}

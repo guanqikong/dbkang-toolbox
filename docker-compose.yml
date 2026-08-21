@@ -1,0 +1,25 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      args:
+        DBKANG_PUBLIC_BASE_URL: ${DBKANG_PUBLIC_BASE_URL:-http://localhost:8000}
+        DBKANG_VERSION: ${DBKANG_VERSION:-0.1.0}
+    image: dbkang-toolbox-server:local
+    restart: unless-stopped
+    environment:
+      DBKANG_DATABASE_URL: sqlite:////app/data/dbkang.sqlite3
+      DBKANG_SECRET_KEY: ${DBKANG_SECRET_KEY:-change-me-before-production}
+      DBKANG_ADMIN_USERNAME: ${DBKANG_ADMIN_USERNAME:-admin}
+      DBKANG_ADMIN_PASSWORD: ${DBKANG_ADMIN_PASSWORD:-change-me}
+      DBKANG_BOOTSTRAP_COURSE_IDS: ${DBKANG_BOOTSTRAP_COURSE_IDS:-}
+      DBKANG_CORS_ORIGINS: ${DBKANG_CORS_ORIGINS:-}
+    volumes:
+      - dbkang-data:/app/data
+      - ./server/assets:/app/assets:ro
+    ports:
+      - "8000:8000"
+
+volumes:
+  dbkang-data:

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "阿康工具箱",
+  "version": "0.1.0",
+  "description": "在学习通课程页面中加载阿康工具箱。",
+  "host_permissions": [
+    "https://*.chaoxing.com/*",
+    "https://*.chaoxing.cn/*",
+    "__DBKANG_API_ORIGIN__/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.chaoxing.com/*", "https://*.chaoxing.cn/*"],
+      "js": ["DBKangToolbox.user.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
