@@ -18,6 +18,7 @@ import type {
 import {
   bindChaoxingNavigationClose,
   configureToolboxFrame,
+  findChaoxingNavigationHost,
   installToolboxFrameStyle,
   setToolboxFrameState,
 } from './toolbox-frame'
@@ -196,20 +197,9 @@ function createNavigationButton(): HTMLElement {
   return item
 }
 
-function findNavigationHost(required = true): HTMLElement {
-  const selectors = [
-    '[data-dbkang-nav]',
-    '.stuNavigationList > ul',
-    '.course-nav',
-    '.course_nav',
-    '.nav-tabs',
-    '.nav',
-  ]
-  for (const selector of selectors) {
-    const node = document.querySelector<HTMLElement>(selector)
-    if (node) return node
-  }
-  if (!required) return null as unknown as HTMLElement
+function findNavigationHost(): HTMLElement {
+  const navigationHost = findChaoxingNavigationHost(document)
+  if (navigationHost) return navigationHost
   const fallback = document.createElement('div')
   Object.assign(fallback.style, {
     position: 'fixed',

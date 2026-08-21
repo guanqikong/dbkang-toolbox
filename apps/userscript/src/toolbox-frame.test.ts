@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   bindChaoxingNavigationClose,
   configureToolboxFrame,
+  findChaoxingNavigationHost,
   installToolboxFrameStyle,
   setToolboxFrameState,
 } from './toolbox-frame'
@@ -53,5 +54,20 @@ describe('persistent toolbox frame', () => {
 
     expect(closeCount).toBe(1)
     expect(nativeClickCount).toBe(1)
+  })
+
+  it.each([
+    ['student', 'stuNavigationList'],
+    ['teacher', 'tchNavigationList'],
+  ])('finds the %s course navigation list', (_role, navigationClass) => {
+    document.body.innerHTML = `
+      <div class="nav-content ${navigationClass}">
+        <ul><li data="sanitized-course-module"></li></ul>
+      </div>
+    `
+
+    const navigationHost = findChaoxingNavigationHost(document)
+
+    expect(navigationHost).toBe(document.querySelector(`.${navigationClass} > ul`))
   })
 })

@@ -1,5 +1,23 @@
 export const TOOLBOX_FRAME_Z_INDEX = '2147482000'
 
+export function findChaoxingNavigationHost(document: Document): HTMLElement | null {
+  const selectors = [
+    '[data-dbkang-nav]',
+    '.stuNavigationList > ul',
+    '.tchNavigationList > ul',
+    '.nav-content > ul',
+    '.course-nav',
+    '.course_nav',
+    '.nav-tabs',
+    '.nav',
+  ]
+  for (const selector of selectors) {
+    const node = document.querySelector<HTMLElement>(selector)
+    if (node) return node
+  }
+  return null
+}
+
 export function installToolboxFrameStyle(
   document: Document,
   frameId: string,
