@@ -31,7 +31,7 @@ const chromiumCache = resolve(buildRoot, 'playwright-browsers')
 const chromiumIcon = resolve(seaRoot, 'chromium.ico')
 const releaseRoot = resolve(repositoryRoot, process.env.DBKANG_BROWSER_RELEASE_DIR || 'release/browser')
 const config = JSON.parse(readFileSync(resolve(browserRoot, 'browser.config.json'), 'utf8'))
-const version = process.env.DBKANG_VERSION || '0.1.3'
+const version = process.env.DBKANG_VERSION || '0.1.4'
 const publicBaseUrl = (process.env.DBKANG_PUBLIC_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 const stableBaseUrl = `${publicBaseUrl}/updates/browser/stable`
 

@@ -26,6 +26,8 @@ Vitest tests use `*.test.ts` beside their source; pytest files use `server/tests
 
 History is minimal but includes Conventional Commit syntax (`fix(scope): summary`); continue with concise imperative messages such as `feat(userscript): sync homework scores`. Pull requests should explain behavior and risk, link relevant issues, list verification commands, and include screenshots for visible UI changes. Call out schema migrations, configuration changes, and generated Windows artifacts explicitly.
 
+After every completed modification, increment the patch version by one unless the user requests another versioning scheme. Then commit all task-related changes and immediately push the current branch to its configured remote; do not leave completed work only in the working tree.
+
 ## Security & Domain Rules
 
 Never commit credentials, cookies, student PII, `.env`, databases, or `user-data/`. Do not invent unstable Chaoxing endpoints; derive adapters from authorized Network/DOM evidence and sanitize fixtures. Treat `courseId` and `classId` (`clazzid`) as identities; course and class names are display-only. Keep student, admin, API, and update endpoints on the unified deployment origin.

@@ -8,7 +8,7 @@ COPY packages ./packages
 RUN pnpm install --frozen-lockfile
 
 ARG DBKANG_PUBLIC_BASE_URL=http://localhost:8000
-ARG DBKANG_VERSION=0.1.3
+ARG DBKANG_VERSION=0.1.4
 ENV VITE_DBKANG_BASE_URL=${DBKANG_PUBLIC_BASE_URL} \
     VITE_DBKANG_TOOLBOX_URL=${DBKANG_PUBLIC_BASE_URL}/toolbox \
     DBKANG_VERSION=${DBKANG_VERSION}
@@ -16,7 +16,7 @@ RUN pnpm build
 
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
 
-ARG DBKANG_VERSION=0.1.3
+ARG DBKANG_VERSION=0.1.4
 
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "DBKang Toolbox"
-    app_version: str = "0.1.3"
+    app_version: str = "0.1.4"
     database_url: str = f"sqlite:///{SERVER_ROOT / 'data' / 'dbkang.sqlite3'}"
     secret_key: str = "change-me-before-production"
     admin_username: str = "admin"

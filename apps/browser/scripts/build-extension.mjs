@@ -9,7 +9,7 @@ const output = resolve(browserRoot, 'dist/extension')
 const source = resolve(browserRoot, 'extension')
 const userscript = resolve(repositoryRoot, 'apps/userscript/dist/DBKangToolbox.user.js')
 const unifiedUpdates = resolve(repositoryRoot, 'release/browser')
-const version = process.env.DBKANG_VERSION || '0.1.3'
+const version = process.env.DBKANG_VERSION || '0.1.4'
 const publicBaseUrl = new URL(process.env.DBKANG_PUBLIC_BASE_URL || 'http://localhost:8000')
 
 await mkdir(output, { recursive: true })
