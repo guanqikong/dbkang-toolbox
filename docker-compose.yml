@@ -5,7 +5,7 @@ services:
       dockerfile: server/Dockerfile
       args:
         DBKANG_PUBLIC_BASE_URL: ${DBKANG_PUBLIC_BASE_URL:-http://localhost:8000}
-        DBKANG_VERSION: ${DBKANG_VERSION:-0.1.0}
+        DBKANG_VERSION: ${DBKANG_VERSION:-0.1.3}
     image: dbkang-toolbox-server:local
     restart: unless-stopped
     environment:

@@ -76,7 +76,6 @@ function installToolbox(
 
   let frame: HTMLIFrameElement | null = null
   let isOpen = false
-  let hiddenNodes: Array<{ node: HTMLElement; display: string }> = []
   let layoutReference: HTMLIFrameElement | null = null
   const layoutObserver = new MutationObserver(() => syncFrameLayout())
 
@@ -87,13 +86,8 @@ function installToolbox(
 
   window.addEventListener('resize', syncFrameLayout)
 
-  const open = (tab = 'achievements'): void => {
+  const open = (tab?: string): void => {
     const reference = extractCourseContentFrame(document)
-    const contentHost = findContentHost(reference)
-    const contentNodes = reference || contentHost === document.body
-      ? [...document.querySelectorAll<HTMLElement>('iframe[id^="frame_content-"]')]
-      : [...contentHost.children].filter((node): node is HTMLElement => node instanceof HTMLElement)
-    const openingFromClosed = !isOpen
 
     if (!frame) {
       const newFrame = document.createElement('iframe')
@@ -104,12 +98,15 @@ function installToolbox(
       Object.assign(newFrame.style, {
         border: '0',
         background: '#f6f8fb',
+        zIndex: '2147482000',
       })
+      const target = new URL(`${TOOLBOX_URL}/`)
+      target.searchParams.set('tab', tab || 'achievements')
+      newFrame.src = target.href
       newFrame.addEventListener('load', () => sendContext(newFrame, context))
-      contentHost.append(newFrame)
+      document.body.append(newFrame)
       frame = newFrame
     }
-    if (frame.parentElement !== contentHost) contentHost.append(frame)
     layoutReference = reference
     layoutObserver.disconnect()
     if (reference) {
@@ -120,15 +117,6 @@ function installToolbox(
     }
     syncFrameLayout()
 
-    if (openingFromClosed) {
-      hiddenNodes = contentNodes
-        .filter((node) => node.id !== FRAME_ID)
-        .map((node) => ({ node, display: node.style.display }))
-      hiddenNodes.forEach(({ node }) => { node.style.display = 'none' })
-    }
-    const target = new URL(`${TOOLBOX_URL}/`)
-    target.searchParams.set('tab', tab)
-    if (frame.src !== target.href) frame.src = target.href
     isOpen = true
     setFrameState(frame, true)
     navButton.dataset.active = 'true'
@@ -136,12 +124,10 @@ function installToolbox(
   }
 
   const close = (): void => {
-    if (!frame) return
+    if (!frame || !isOpen) return
     isOpen = false
     setFrameState(frame, false)
     layoutObserver.disconnect()
-    hiddenNodes.forEach(({ node, display }) => { node.style.display = display })
-    hiddenNodes = []
     navButton.dataset.active = 'false'
   }
 
@@ -186,13 +172,15 @@ function installToolboxStyle(): void {
   style.id = STYLE_ID
   style.textContent = `
 #${FRAME_ID}[data-dbkang-state="closed"] {
-  display: none !important;
+  display: block !important;
   visibility: hidden !important;
+  opacity: 0 !important;
   pointer-events: none !important;
 }
 #${FRAME_ID}[data-dbkang-state="open"] {
   display: block !important;
   visibility: visible !important;
+  opacity: 1 !important;
   pointer-events: auto !important;
 }`
   const styleHost = document.head || document.documentElement
@@ -201,6 +189,7 @@ function installToolboxStyle(): void {
 
 function setFrameState(frame: HTMLIFrameElement, open: boolean): void {
   frame.dataset.dbkangState = open ? 'open' : 'closed'
+  frame.setAttribute('aria-hidden', String(!open))
 }
 
 function createNavigationButton(): HTMLElement {
@@ -266,22 +255,6 @@ function findNavigationHost(required = true): HTMLElement {
   })
   document.body.append(fallback)
   return fallback
-}
-
-function findContentHost(reference: HTMLIFrameElement | null = null): HTMLElement {
-  if (reference?.parentElement) return reference.parentElement
-  const selectors = [
-    '[data-dbkang-content]',
-    '.course-content',
-    '.course_main',
-    '#content',
-    'main',
-  ]
-  for (const selector of selectors) {
-    const node = document.querySelector<HTMLElement>(selector)
-    if (node) return node
-  }
-  return document.body
 }
 
 function sendContext(frame: HTMLIFrameElement, context: ToolboxContext): void {
