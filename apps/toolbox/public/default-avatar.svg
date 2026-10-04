@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">默认头像</title>
+  <rect width="256" height="256" fill="#7d899a"/>
+  <circle cx="128" cy="94" r="48" fill="#fff"/>
+  <path d="M43 232c8-57 38-86 85-86s77 29 85 86" fill="#fff"/>
+</svg>
+

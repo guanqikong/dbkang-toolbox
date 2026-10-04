@@ -1,0 +1,124 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #182338;
+  background: #f6f8fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --dbk-primary: #2f6fe4;
+  --dbk-primary-hover: #245fc9;
+  --dbk-primary-soft: #edf4ff;
+  --dbk-text: #182338;
+  --dbk-text-muted: #6e7b91;
+  --dbk-border: #e2e7ef;
+  --dbk-surface: #ffffff;
+  --dbk-canvas: #f6f8fb;
+  --dbk-danger: #d94747;
+  --dbk-success: #18805d;
+  --dbk-warning: #a56512;
+  --dbk-radius-sm: 6px;
+  --dbk-radius-md: 10px;
+  --dbk-shadow: 0 8px 24px rgba(30, 54, 92, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 1024px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--dbk-canvas);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.dbk-button {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--dbk-primary);
+  border-radius: var(--dbk-radius-sm);
+  color: #fff;
+  background: var(--dbk-primary);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.dbk-button:hover {
+  border-color: var(--dbk-primary-hover);
+  background: var(--dbk-primary-hover);
+}
+
+.dbk-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dbk-button--secondary {
+  border-color: var(--dbk-border);
+  color: var(--dbk-text);
+  background: var(--dbk-surface);
+}
+
+.dbk-button--secondary:hover {
+  border-color: #cbd4e2;
+  background: #f7f9fc;
+}
+
+.dbk-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid var(--dbk-border);
+  border-radius: var(--dbk-radius-sm);
+  outline: none;
+  background: var(--dbk-surface);
+}
+
+.dbk-input:focus {
+  border-color: var(--dbk-primary);
+  box-shadow: 0 0 0 3px rgba(47, 111, 228, 0.1);
+}
+
+.dbk-panel {
+  border: 1px solid var(--dbk-border);
+  border-radius: var(--dbk-radius-md);
+  background: var(--dbk-surface);
+}
+
+.dbk-empty {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  padding: 32px;
+  color: var(--dbk-text-muted);
+  text-align: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

@@ -1,0 +1,43 @@
+name: Windows Browser Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version embedded in the portable package
+        required: true
+        default: 0.1.0-dev
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      PUBLIC_BASE_URL: ${{ vars.DBKANG_PUBLIC_BASE_URL || 'http://localhost:8000' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @dbkang/userscript build
+        env:
+          VITE_DBKANG_BASE_URL: ${{ env.PUBLIC_BASE_URL }}
+          VITE_DBKANG_TOOLBOX_URL: ${{ env.PUBLIC_BASE_URL }}/toolbox
+          DBKANG_VERSION: ${{ inputs.version }}
+      - run: pnpm --filter @dbkang/browser build:windows
+        env:
+          DBKANG_VERSION: ${{ inputs.version }}
+          DBKANG_PUBLIC_BASE_URL: ${{ env.PUBLIC_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dbkang-browser-${{ inputs.version }}
+          path: release/browser
+          if-no-files-found: error
+          retention-days: 14

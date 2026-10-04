@@ -1,0 +1,16 @@
+{
+  "name": "dbkang-toolbox",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "pnpm build && uv run --project server alembic -c server/alembic.ini upgrade head && uv run --project server uvicorn --app-dir server app.main:app --reload --port 8000",
+    "dev:hmr": "pnpm --parallel --filter @dbkang/toolbox --filter @dbkang/admin --filter @dbkang/userscript dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "server:dev": "uv run --project server uvicorn --app-dir server app.main:app --reload --port 8000",
+    "server:test": "uv run --project server python -m pytest server/tests"
+  }
+}

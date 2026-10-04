@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">默认成就图标</title>
+  <rect width="256" height="256" rx="24" fill="#eef3fa"/>
+  <path d="M77 42h102v62c0 39-22 65-51 65s-51-26-51-65V42Z" fill="#5e7fae"/>
+  <path d="M77 62H48v24c0 31 18 49 45 49M179 62h29v24c0 31-18 49-45 49" fill="none" stroke="#5e7fae" stroke-width="16" stroke-linecap="round"/>
+  <path d="M128 169v27M89 220h78" stroke="#5e7fae" stroke-width="16" stroke-linecap="round"/>
+</svg>
+
