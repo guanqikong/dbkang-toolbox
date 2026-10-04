@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const version = env.DBKANG_VERSION || '0.1.0'
   const connectHosts = [
     'chaoxing.com',
+    'chaoxing.cn',
     new URL(apiBaseUrl).hostname,
   ]
   const connectMetadata = [...new Set(connectHosts)]
@@ -19,6 +20,7 @@ export default defineConfig(({ mode }) => {
 // @description  在已启用的学习通课程中加载阿康工具箱
 // @match        *://*.chaoxing.com/*
 // @match        *://*.chaoxing.cn/*
+// @match        *://mooc2-ans.chaoxing.com/*
 // @grant        GM_xmlhttpRequest
 ${connectMetadata}
 // @run-at       document-idle

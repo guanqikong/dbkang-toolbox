@@ -28,24 +28,45 @@ const TOOLBOX_URL = __DBKANG_TOOLBOX_URL__
 const NAV_ID = 'dbkang-toolbox-nav'
 const FRAME_ID = 'dbkang-toolbox-frame'
 const STYLE_ID = 'dbkang-toolbox-style'
+const NAV_WAIT_TIMEOUT_MS = 8_000
+
+let installStarted = false
 
 void initialize()
 
 async function initialize(): Promise<void> {
   if (window.top !== window.self) return
+  console.log('[DBKang] 开始初始化...')
+  console.log('[DBKang] 当前URL:', window.location.href)
+
   const coursePage = extractChaoxingCoursePage(document, window.location)
-  if (!coursePage || coursePage.courseEnded) return
+  console.log('[DBKang] 课程页面信息:', coursePage)
+
+  if (!coursePage) {
+    console.log('[DBKang] 无法解析课程页面信息，退出')
+    return
+  }
+  if (coursePage.courseEnded) {
+    console.log('[DBKang] 课程已结课，退出')
+    return
+  }
 
   let identity
   try {
+    console.log('[DBKang] 正在获取账户信息...')
     const accountHtml = await requestText('https://passport2.chaoxing.com/mooc/accountManage')
     identity = extractAccountIdentity(parseHtml(accountHtml), coursePage.fid)
-  } catch {
+    console.log('[DBKang] 账户信息:', identity)
+  } catch (error) {
+    console.log('[DBKang] 获取账户信息失败:', error)
     return
   }
   const classIdentity =
     coursePage.role === 'student' && identity ? parseStudentNumber(identity.studentId) : null
-  if (!identity || (coursePage.role === 'student' && !classIdentity)) return
+  if (!identity || (coursePage.role === 'student' && !classIdentity)) {
+    console.log('[DBKang] 身份验证失败，退出')
+    return
+  }
   const context: ToolboxContext = {
     role: coursePage.role,
     ...identity,
@@ -59,17 +80,50 @@ async function initialize(): Promise<void> {
 
   let access: CourseAccessResponse
   try {
+    console.log('[DBKang] 正在检查课程访问权限:', context.courseId)
     access = await requestJson<CourseAccessResponse>(
       `${API_BASE_URL}/api/v1/public/courses/${encodeURIComponent(context.courseId)}`,
     )
-  } catch {
+    console.log('[DBKang] 课程访问权限:', access)
+  } catch (error) {
+    console.log('[DBKang] 检查课程访问权限失败:', error)
     return
   }
-  if (access.status !== 'available') return
+  if (access.status !== 'available') {
+    console.log('[DBKang] 课程未启用，退出')
+    return
+  }
 
+  console.log('[DBKang] 等待左侧菜单渲染...')
+  await waitForNavigationHost()
+  if (installStarted) return
+  installStarted = true
+
+  console.log('[DBKang] 安装工具箱...')
   const controller = installToolbox(context, coursePage.homeworkListUrl)
+  console.log('[DBKang] 工具箱安装完成')
   const requestedTab = new URLSearchParams(window.location.search).get('dbkangTab')
   if (requestedTab) controller.open(requestedTab)
+}
+
+// 使用 MutationObserver 等待课程页面左侧菜单渲染完成
+function waitForNavigationHost(timeoutMs = NAV_WAIT_TIMEOUT_MS): Promise<void> {
+  if (findChaoxingNavigationHost(document)) return Promise.resolve()
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (): void => {
+      if (settled) return
+      settled = true
+      observer.disconnect()
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const observer = new MutationObserver(() => {
+      if (findChaoxingNavigationHost(document)) finish()
+    })
+    const timer = window.setTimeout(finish, timeoutMs)
+    observer.observe(document.documentElement, { childList: true, subtree: true })
+  })
 }
 
 function installToolbox(
@@ -164,6 +218,7 @@ function installToolbox(
 function createNavigationButton(): HTMLElement {
   const item = document.createElement('li')
   item.id = NAV_ID
+  item.setAttribute('data-dbkang-nav-item', 'true')
   const button = document.createElement('button')
   button.type = 'button'
   button.innerHTML = '<span aria-hidden="true">DB</span><strong>阿康工具箱</strong>'
@@ -178,6 +233,7 @@ function createNavigationButton(): HTMLElement {
     font: '14px system-ui, sans-serif',
     background: 'transparent',
     cursor: 'pointer',
+    listStyle: 'none',
   })
   const mark = button.querySelector('span')
   if (mark instanceof HTMLElement) {
@@ -200,6 +256,38 @@ function createNavigationButton(): HTMLElement {
 function findNavigationHost(): HTMLElement {
   const navigationHost = findChaoxingNavigationHost(document)
   if (navigationHost) return navigationHost
+
+  // 尝试查找左侧菜单容器
+  const leftMenuSelectors = [
+    '.fanya-left-menu',
+    '.left-menu',
+    '.sidebar',
+    '.nav-sidebar',
+    '.course-sidebar',
+    '.fanya-sidebar',
+    '.fanya-nav',
+    '.menu-container',
+    '.nav-container',
+  ]
+  for (const selector of leftMenuSelectors) {
+    const container = document.querySelector<HTMLElement>(selector)
+    if (container) {
+      // 创建一个固定的导航项容器
+      const navWrapper = document.createElement('div')
+      navWrapper.setAttribute('data-dbkang-nav-wrapper', 'true')
+      Object.assign(navWrapper.style, {
+        position: 'sticky',
+        top: '0',
+        zIndex: '100',
+        background: '#fff',
+        borderBottom: '1px solid #e2e7ef',
+      })
+      container.prepend(navWrapper)
+      return navWrapper
+    }
+  }
+
+  // 最终 fallback：右下角浮动按钮
   const fallback = document.createElement('div')
   Object.assign(fallback.style, {
     position: 'fixed',

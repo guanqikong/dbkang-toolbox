@@ -3,13 +3,38 @@ export const TOOLBOX_FRAME_Z_INDEX = '2147482000'
 export function findChaoxingNavigationHost(document: Document): HTMLElement | null {
   const selectors = [
     '[data-dbkang-nav]',
+    // 旧版页面选择器
     '.stuNavigationList > ul',
     '.tchNavigationList > ul',
     '.nav-content > ul',
     '.course-nav',
     '.course_nav',
     '.nav-tabs',
+    // 新版页面选择器 (mooc2-ans-vue)
+    '.fanya-nav-list',
+    '.fanya-nav > ul',
+    '.nav-list',
+    '.menu-list',
+    '.sidebar-menu',
+    '.left-nav',
+    '.left-menu',
+    '.course-menu',
+    '.chapter-list',
+    '.chapter-list > ul',
+    '.catalog-list',
+    '.catalog-list > ul',
+    '.unit-list',
+    '.unit-list > ul',
+    '.section-list',
+    '.section-list > ul',
+    '.fanya-course-nav',
+    '.fanya-course-menu',
+    '.fanya-sidebar',
+    '.fanya-left-nav',
+    // 通用选择器
     '.nav',
+    '.menu',
+    '.sidebar',
   ]
   for (const selector of selectors) {
     const node = document.querySelector<HTMLElement>(selector)

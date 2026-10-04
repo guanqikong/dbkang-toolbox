@@ -74,10 +74,38 @@ export function parseStudentNumber(studentId: string): ClassIdentity | null {
 
 export function extractCourseRole(location: Location | URL): ToolboxRole {
   const url = location instanceof URL ? location : new URL(location.href)
-  return /\/mycourse\/tch(?:\/|$)/i.test(url.pathname) ? 'teacher' : 'student'
+  const path = url.pathname.toLowerCase()
+  // 旧版教师页面: /mycourse/tch 或 /mooc2-ans/mycourse/tch
+  // 新版教师页面: /mooc2-ans-vue/fanyav3/tch
+  if (
+    /\/mycourse\/tch(?:\/|$)/.test(path) ||
+    /\/mooc2-ans\/mycourse\/tch(?:\/|$)/.test(path) ||
+    /\/mooc2-ans-vue\/fanyav3\/tch(?:\/|$)/.test(path)
+  ) {
+    return 'teacher'
+  }
+  // 旧版学生页面: /mycourse/stu 或 /mooc2-ans/mycourse/stu
+  // 新版学生页面: /mooc2-ans-vue/fanyav3/stu
+  if (
+    /\/mycourse\/stu(?:\/|$)/.test(path) ||
+    /\/mooc2-ans\/mycourse\/stu(?:\/|$)/.test(path) ||
+    /\/mooc2-ans-vue\/fanyav3\/stu(?:\/|$)/.test(path)
+  ) {
+    return 'student'
+  }
+  return 'student'
 }
 
 export function extractCourseContentFrame(document: Document): HTMLIFrameElement | null {
+  // 新版页面选择器
+  const newFrames = [...document.querySelectorAll<HTMLIFrameElement>('iframe[class*="fanya"], iframe[id*="fanya"], .fanya-content iframe')]
+  const newVisible = newFrames.find((frame) => {
+    if (frame.hidden || frame.style.display === 'none') return false
+    return document.defaultView?.getComputedStyle(frame).display !== 'none'
+  })
+  if (newVisible) return newVisible
+
+  // 旧版页面选择器
   const frames = [...document.querySelectorAll<HTMLIFrameElement>('iframe[id^="frame_content-"]')]
   const visible = frames.find((frame) => {
     if (frame.hidden || frame.style.display === 'none') return false
@@ -90,6 +118,31 @@ export function resolveCourseContentFrameLayout(
   reference: HTMLIFrameElement | null,
   role: ToolboxRole,
 ): ChaoxingContentFrameLayout {
+  // 新版页面 fallback 布局
+  const newFallback: ChaoxingContentFrameLayout = role === 'teacher'
+    ? {
+        position: 'absolute',
+        inset: '60px 0 0 200px',
+        top: '60px',
+        right: '0',
+        bottom: '0',
+        left: '200px',
+        width: 'calc(100% - 200px)',
+        height: 'calc(100vh - 60px)',
+        minHeight: '0',
+      }
+    : {
+        position: '',
+        inset: '',
+        top: '',
+        right: '',
+        bottom: '',
+        left: '',
+        width: '100%',
+        height: 'calc(100vh - 80px)',
+        minHeight: '680px',
+      }
+  // 旧版页面 fallback 布局
   const fallback: ChaoxingContentFrameLayout = role === 'teacher'
     ? {
         position: 'absolute',
@@ -113,7 +166,7 @@ export function resolveCourseContentFrameLayout(
         height: 'calc(100vh - 72px)',
         minHeight: '680px',
       }
-  if (!reference) return fallback
+  if (!reference) return newFallback
 
   const computed = reference.ownerDocument.defaultView?.getComputedStyle(reference)
   const styleValue = (inline: string, resolved: string | undefined, defaultValue: string): string =>
@@ -149,6 +202,8 @@ export function extractCourseId(document: Document, location: Location | URL): s
   if (fromUrl) return fromUrl
 
   const url = location instanceof URL ? location : new URL(location.href)
+  // 旧版: /mycourse/tch/12345 或 /course/12345
+  // 新版: /mooc2-ans-vue/fanyav3/tch (courseId 在 URL 参数中)
   const pathMatch = /\/(?:course|mycourse)\/(\d+)/i.exec(url.pathname)
   if (pathMatch?.[1]) return pathMatch[1]
 
@@ -170,19 +225,55 @@ export function extractClassId(document: Document, location: Location | URL): st
 }
 
 export function extractCpi(document: Document, location: Location | URL): string | null {
-  return queryValue(location, ['cpi']) || firstValue(document, ['#cpi', 'input[name="cpi"]'])
+  const fromUrl = queryValue(location, ['cpi'])
+  if (fromUrl) return fromUrl
+  const fromPage = firstValue(document, ['#cpi', 'input[name="cpi"]'])
+  if (fromPage) return fromPage
+  // 新版页面可能没有 cpi 参数，使用 courseId 作为 fallback
+  const courseId = extractCourseId(document, location)
+  return courseId || null
 }
 
 export function extractCourseName(document: Document): string | null {
   const dataName = document.querySelector<HTMLElement>('[data-course-name]')?.dataset.courseName?.trim()
-  return dataName || firstText(document, ['.classDl dd[title]', '.course-name', '.courseName', '.course-title', 'h1'])
+  if (dataName) return dataName
+  // 新版页面选择器
+  const newName = firstText(document, [
+    '.fanya-course-name',
+    '.course-header .name',
+    '.course-info .name',
+    '.header-title',
+    '.page-title',
+  ])
+  if ( newName) return newName
+  // 旧版页面选择器
+  return firstText(document, ['.classDl dd[title]', '.course-name', '.courseName', '.course-title', 'h1'])
 }
 
 export function extractVisibleRealName(document: Document): string | null {
+  // 新版页面选择器
+  const newName = firstText(document, [
+    '.fanya-user-name',
+    '.user-info .name',
+    '.user-name',
+    '.header-user .name',
+    '.top-nav .name',
+  ])
+  if (newName) return newName
+  // 旧版页面选择器
   return firstText(document, ['.Header .name > p', '.loginAfter .name > p', '#messageName', '[data-real-name]'])
 }
 
 export function extractStudentIdentity(document: Document): { studentId: string; realName: string } | null {
+  // 新版页面选择器
+  const newIdentityNode = document.querySelector<HTMLElement>('[data-dbkang-student-id]')
+  const newStudentId = newIdentityNode?.dataset.dbkangStudentId?.trim()
+  const newRealName = newIdentityNode?.dataset.dbkangRealName?.trim()
+  if (newStudentId && newRealName) {
+    return { studentId: newStudentId, realName: newRealName }
+  }
+
+  // 旧版页面选择器
   const identityNode = document.querySelector<HTMLElement>('[data-student-id][data-real-name]')
   const studentId =
     identityNode?.dataset.studentId?.trim() ||
@@ -198,6 +289,29 @@ export function extractAccountIdentity(
   document: Document,
   fid?: string | null,
 ): { studentId: string; realName: string } | null {
+  // 新版页面选择器
+  const newRealName = firstText(document, [
+    '.fanya-message-name',
+    '.fanya-user-name',
+    '.account-name',
+    '.user-name',
+  ])
+  if (newRealName) {
+    const newEntries = [...document.querySelectorAll<HTMLElement>('li, .account-item, .user-item')]
+      .map((node) => {
+        const studentId = /学号\/工号\s*[:：]\s*([A-Za-z0-9_-]+)/.exec(node.textContent || '')?.[1]
+        const accountAction = node.querySelector<HTMLElement>('[onclick*="deleteAccount"], [data-action="delete"]')?.getAttribute('onclick') || ''
+        const entryFid = /deleteAccount\(['"]([^'"]+)/.exec(accountAction)?.[1] || null
+        return studentId ? { studentId, fid: entryFid } : null
+      })
+      .filter((value): value is { studentId: string; fid: string | null } => value !== null)
+    const newSelected = (fid ? newEntries.find((entry) => entry.fid === fid) : null) || newEntries[0]
+    if (newSelected) {
+      return { studentId: newSelected.studentId, realName: newRealName }
+    }
+  }
+
+  // 旧版页面选择器
   const realName = firstText(document, ['#messageName', '[data-real-name]'])
   const entries = [...document.querySelectorAll<HTMLElement>('li')]
     .map((node) => {
@@ -217,8 +331,28 @@ export function extractCourseEnded(document: Document): boolean | null {
   if (explicit === 'true') return true
   if (explicit === 'false') return false
 
+  // 新版页面选择器
+  const newEndBanner = firstText(document, [
+    '.fanya-warn-txt',
+    '.fanya-not-open-tip',
+    '.fanya-course-end',
+    '.course-end-tip',
+  ])
+  if (newEndBanner && /本课程已结课|已结课|课程已结束|已结束/.test(newEndBanner)) return true
+
   const endBanner = firstText(document, ['.warn-txt', '.not-open-tip'])
   if (endBanner && /本课程已结课|已结课|课程已结束/.test(endBanner)) return true
+
+  // 新版页面状态选择器
+  const newStateText = firstText(document, [
+    '.fanya-course-state',
+    '.fanya-course-status',
+    '.course-state-text',
+  ])
+  if (newStateText) {
+    if (/已结课|课程已结束|已结束/.test(newStateText)) return true
+    if (/进行中|授课中|未开始/.test(newStateText)) return false
+  }
 
   const stateText = firstText(document, ['.course-state', '.course-status', '[data-course-status]'])
   if (!stateText) return null
@@ -235,19 +369,19 @@ export function extractChaoxingCoursePage(
   const courseId = extractCourseId(document, location)
   const classId = extractClassId(document, location)
   const cpi = extractCpi(document, location)
-  if (!courseId || !classId || !cpi) return null
+  if (!courseId || !classId) return null
   return {
     role,
     courseId,
     classId,
-    cpi,
+    cpi: cpi || '',
     fid: firstValue(document, ['#fid', 'input[name="fid"]']),
     courseName: extractCourseName(document) || `课程 ${courseId}`,
     realName: extractVisibleRealName(document),
     courseEnded: extractCourseEnded(document) === true,
     homeworkListUrl:
       role === 'student'
-        ? buildHomeworkListUrl(document, location, courseId, classId, cpi)
+        ? buildHomeworkListUrl(document, location, courseId, classId, cpi || '')
         : null,
   }
 }
@@ -259,9 +393,33 @@ function buildHomeworkListUrl(
   classId: string,
   cpi: string,
 ): string | null {
+  // 新版页面选择器
+  const newExisting = document.querySelector<HTMLIFrameElement>('iframe[class*="fanya-work"], iframe[id*="fanya-work"], .fanya-work-list iframe')?.src
+  if (newExisting) return newExisting
+
+  // 旧版页面选择器
   const existing = document.querySelector<HTMLIFrameElement>('iframe[id^="frame_content-zy"]')?.src
   if (existing) return existing
 
+  // 新版页面 enc 选择器
+  const newStudentEnc = firstValue(document, ['#enc', 'input[name="enc"]', '.fanya-enc'])
+  const newWorkEnc = firstValue(document, ['#workEnc', 'input[name="workEnc"]', '.fanya-work-enc'])
+  if (newStudentEnc && newWorkEnc) {
+    const base = firstValue(document, ['#moocDomainName', 'input[name="moocDomainName"]']) || 'https://mooc1.chaoxing.com'
+    const url = new URL('/mooc2/work/list', base)
+    const current = location instanceof URL ? location : new URL(location.href)
+    url.searchParams.set('courseId', courseId)
+    url.searchParams.set('classId', classId)
+    url.searchParams.set('cpi', cpi)
+    url.searchParams.set('ut', firstValue(document, ['#heardUt']) || 's')
+    const timestamp = firstValue(document, ['#t']) || current.searchParams.get('t')
+    if (timestamp) url.searchParams.set('t', timestamp)
+    url.searchParams.set('stuenc', newStudentEnc)
+    url.searchParams.set('enc', newWorkEnc)
+    return url.href
+  }
+
+  // 旧版页面 enc 选择器
   const studentEnc = firstValue(document, ['#enc', 'input[name="enc"]'])
   const workEnc = firstValue(document, ['#workEnc', 'input[name="workEnc"]'])
   if (!studentEnc || !workEnc) return null
@@ -300,6 +458,33 @@ export function buildToolboxContext(document: Document, location: Location | URL
 }
 
 export function extractHomeworkList(document: Document, baseUrl: string): ChaoxingHomeworkListItem[] {
+  // 新版页面选择器
+  const newItems = [...document.querySelectorAll<HTMLElement>('.fanya-work-item, .work-item, .homework-item')]
+  if (newItems.length > 0) {
+    return newItems
+      .map((node) => {
+        const link = node.querySelector<HTMLAnchorElement>('a[href*="/work/task"]')
+        const rawUrl = link?.href || node.getAttribute('data-url') || ''
+        if (!rawUrl) return null
+        const url = new URL(rawUrl, baseUrl)
+        const assignmentId = url.searchParams.get('workId')?.trim() || ''
+        const assignmentName =
+          firstTextFromNode(node, ['.title', '.name', '.work-name']) ||
+          node.textContent?.trim() ||
+          '未命名作业'
+        const status = firstTextFromNode(node, ['.status', '.state']) || ''
+        if (!assignmentId) return null
+        return {
+          assignmentId,
+          assignmentName,
+          detailUrl: url.href,
+          completed: /已完成|已批阅|待批阅/.test(status),
+        }
+      })
+      .filter((item): item is ChaoxingHomeworkListItem => item !== null)
+  }
+
+  // 旧版页面选择器
   return [...document.querySelectorAll<HTMLElement>('li[data*="/work/task"], [role="link"][data*="/work/task"]')]
     .map((node) => {
       const rawUrl = node.getAttribute('data')?.trim()
@@ -325,6 +510,20 @@ export function extractHomeworkDetail(
   document: Document,
   fallback: Pick<ChaoxingHomeworkListItem, 'assignmentId' | 'assignmentName'>,
 ): HomeworkSnapshotInput {
+  // 新版页面选择器
+  const newFullScoreText = [...document.querySelectorAll<HTMLElement>('.fanya-info-head span, .score-info span')]
+    .map((node) => node.textContent || '')
+    .find((text) => /满分\s*[:：]/.test(text))
+  if (newFullScoreText) {
+    return {
+      assignmentId: firstValue(document, ['#workId', '.fanya-work-id']) || fallback.assignmentId,
+      assignmentName: firstText(document, ['.fanya-mark-title', '.fanya-work-title']) || fallback.assignmentName,
+      score: numberOrNull(document.querySelector<HTMLElement>('.fanya-result-num .custom-style, .fanya-result-num i')?.textContent),
+      totalScore: numberOrNull(newFullScoreText.replace(/^.*满分\s*[:：]\s*/, '')),
+    }
+  }
+
+  // 旧版页面选择器
   const fullScoreText = [...document.querySelectorAll<HTMLElement>('.infoHead span')]
     .map((node) => node.textContent || '')
     .find((text) => /满分\s*[:：]/.test(text))

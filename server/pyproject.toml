@@ -10,6 +10,8 @@ dependencies = [
   "pydantic-settings>=2.10.0",
   "python-multipart>=0.0.20",
   "sqlalchemy>=2.0.40",
+  # Windows 没有系统级 tz 数据库，zoneinfo 需要它来解析 Asia/Shanghai。
+  "tzdata>=2025.2",
   "uvicorn[standard]>=0.35.0",
 ]
 

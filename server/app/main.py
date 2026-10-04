@@ -1,5 +1,6 @@
 import base64
 import binascii
+import mimetypes
 import secrets
 from collections.abc import Generator
 from contextlib import asynccontextmanager
@@ -63,6 +64,12 @@ from .services import (
     sync_homework,
     touch_focus,
 )
+
+# Starlette's StaticFiles relies on the stdlib mimetypes registry, which guesses
+# text/plain for .js on some platforms. Browsers then refuse the ES module.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("image/svg+xml", ".svg")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
