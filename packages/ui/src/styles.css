@@ -12,7 +12,7 @@
   --dbk-text-muted: #6e7b91;
   --dbk-border: #e2e7ef;
   --dbk-surface: #ffffff;
-  --dbk-canvas: #f6f8fb;
+  --dbk-canvas: #f0f2f5;
   --dbk-danger: #d94747;
   --dbk-success: #18805d;
   --dbk-warning: #a56512;
@@ -31,6 +31,7 @@ body,
   min-width: 1024px;
   min-height: 100%;
   margin: 0;
+  background: var(--dbk-canvas);
 }
 
 body {

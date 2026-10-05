@@ -3,99 +3,107 @@ body {
 }
 
 .app-shell {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  padding-bottom: 64px;
+  margin: 30px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--dbk-surface);
+  box-shadow: 0 1px 3px rgba(24, 35, 56, 0.06);
 }
 
+/*
+ * 顶部功能条：参考原生"管理"页卡的 tab 栏设计。
+ * 左侧功能按钮（选中项蓝色下划线），右侧用户头像昵称，下方细分隔线。
+ *
+ * 字体族、字号、字重、行高、字色与左端空隙都不写死：学习通的原生页签在
+ * 跨域 iframe 内读不到样式，因此由用户脚本在可读的外层文档里实测后经消息
+ * 传入，写进下面的 --dbk-native-* 变量。新旧版本课程页各自用自己的排版，
+ * 工具箱不必跟着改版本。
+ */
 .topbar {
   position: sticky;
   z-index: 20;
   top: 0;
-  display: grid;
-  grid-template-columns: 300px 1fr 260px;
+  display: flex;
   align-items: stretch;
-  min-height: 64px;
+  min-height: 56px;
   border-bottom: 1px solid var(--dbk-border);
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--dbk-surface);
 }
 
-.brand,
-.profile-button {
+.main-nav {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 20px;
-  border: 0;
-  color: var(--dbk-text);
-  text-align: left;
-  background: transparent;
-}
-
-.brand span,
-.profile-button span {
-  display: grid;
-  min-width: 0;
-}
-
-.brand strong,
-.profile-button strong {
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.brand small,
-.profile-button small {
-  overflow: hidden;
-  margin-top: 2px;
-  color: var(--dbk-text-muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topbar nav {
-  display: flex;
-  justify-content: center;
+  align-items: stretch;
+  gap: 4px;
+  /* 原生顶部菜单列左端与卡片内缘之间有一段空隙 */
+  padding-left: var(--dbk-nav-inset-left, 20px);
 }
 
 .nav-link {
   position: relative;
-  min-width: 96px;
   padding: 0 20px;
   border: 0;
-  color: var(--dbk-text-muted);
+  color: var(--dbk-native-color, rgb(51, 51, 51));
+  font-family: var(--dbk-native-font-family, inherit);
+  font-size: var(--dbk-native-font-size, 14px);
+  font-weight: var(--dbk-native-font-weight, 400);
+  line-height: var(--dbk-native-line-height, 1.5);
   background: transparent;
 }
 
-.nav-link::after {
-  position: absolute;
-  right: 20px;
-  bottom: 0;
-  left: 20px;
-  height: 2px;
-  background: transparent;
-  content: '';
+.nav-link:hover {
+  color: var(--dbk-primary);
 }
 
-.nav-link:hover,
+/* 选中项的蓝色小横条，参照原生 tab 下划线 */
 .nav-link--active {
   color: var(--dbk-primary);
 }
 
 .nav-link--active::after {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  left: 20px;
+  height: 2px;
+  border-radius: 1px;
   background: var(--dbk-primary);
+  content: '';
 }
 
 .profile-button {
-  justify-self: end;
-  min-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  padding: 8px 20px;
+  border: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  background: transparent;
+}
+
+.profile-button span {
+  display: grid;
+  min-width: 0;
+}
+
+.profile-button strong {
+  overflow: hidden;
+  font-family: var(--dbk-native-font-family, inherit);
+  font-size: var(--dbk-native-font-size, 14px);
+  font-weight: var(--dbk-native-font-weight, 400);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-button img {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--dbk-border);
   border-radius: 50%;
   object-fit: cover;
@@ -113,6 +121,33 @@ body {
   min-height: 552px;
   margin: 0;
   padding: 0;
+}
+
+/*
+ * 学习通课程内容区是「灰底 + 白色卡片」，工具箱被嵌在同一位置，
+ * 因此窗口自身铺同一层灰底（底色定义见 packages/ui），再由卡片承载内容，
+ * 避免与原生页卡出现两套底色。
+ */
+
+/*
+ * 卡片：复刻原生页卡的留白与圆角。
+ * 数值取自真实页面截图的逐像素测量：留白 30px、圆角 5px。
+ */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 30px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--dbk-surface);
+  box-shadow: 0 1px 3px rgba(24, 35, 56, 0.06);
+}
+
+/* 主内容区撑满卡片剩余高度，把音乐播放条压到卡片底部 */
+.app-content {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .state-page {

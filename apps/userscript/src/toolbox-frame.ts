@@ -1,3 +1,5 @@
+import type { NativePanelLook } from './navigation-active'
+
 export const TOOLBOX_FRAME_Z_INDEX = '2147482000'
 
 // 已由真实页面验证的容器选择器。
@@ -59,6 +61,7 @@ export function installToolboxFrameStyle(
   document: Document,
   frameId: string,
   styleId: string,
+  navId: string,
 ): void {
   if (document.getElementById(styleId)) return
   const style = document.createElement('style')
@@ -75,15 +78,84 @@ export function installToolboxFrameStyle(
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
-}`
+}
+#${navId}[data-dbkang-nav-item]:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+/* 标记继承相邻菜单项的文字颜色与字号，使其看起来就是原生图标 */
+.dbkang-nav-mark {
+  display: inline-block;
+  margin-right: 6px;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  opacity: 0.75;
+  vertical-align: baseline;
+}
+.dbkang-nav-label {
+  font-weight: inherit;
+}
+[data-dbkang-nav-item][data-active="true"] .dbkang-nav-mark {
+  opacity: 1;
+}
+.dbkang-nav-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  color: #334155;
+  font: 14px system-ui, sans-serif;
+  background: transparent;
+  cursor: pointer;
+  list-style: none;
+}
+.dbkang-nav-fallback .dbkang-nav-mark {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  margin-right: 0;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 9px;
+  background: #2f6fe4;
+  opacity: 1;
+}
+`
   const styleHost = document.head || document.documentElement
   styleHost.append(style)
+}
+
+/**
+ * 给工具箱窗口套上与原生页卡一致的视觉：灰底画布 + 白色圆角卡片。
+ *
+ * 原生课程内容区是「灰色画布 + 白色圆角卡片」，卡片四周有一圈灰色留白。
+ * 我们的 iframe 叠在原生 iframe 之上，若用 margin 做留白，透出的是原生 iframe
+ * 的白底而非灰底。因此改为：iframe 自身铺灰底画布，白色卡片由内部
+ * `.app-shell` 用 margin 内缩，灰底从卡片四周透出来形成留白。
+ */
+export function applyNativePanelLook(
+  frame: HTMLIFrameElement,
+  look: NativePanelLook,
+): void {
+  Object.assign(frame.style, {
+    border: '0',
+    // 灰底画布：卡片 margin 区域透出的就是这一层
+    background: look.canvas,
+    borderRadius: look.radius,
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  })
 }
 
 export function configureToolboxFrame(frame: HTMLIFrameElement): void {
   Object.assign(frame.style, {
     border: '0',
-    background: '#f6f8fb',
+    background: '#ffffff',
     zIndex: TOOLBOX_FRAME_Z_INDEX,
   })
   setToolboxFrameState(frame, false)

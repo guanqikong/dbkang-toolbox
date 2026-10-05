@@ -19,7 +19,7 @@ describe('persistent toolbox frame', () => {
   })
 
   it('keeps the same iframe and source while toggling visibility', () => {
-    installToolboxFrameStyle(document, FRAME_ID, STYLE_ID)
+    installToolboxFrameStyle(document, FRAME_ID, STYLE_ID, 'dbkang-toolbox-nav')
     const frame = document.createElement('iframe')
     frame.id = FRAME_ID
     frame.src = 'https://toolbox.example.test/toolbox/?tab=music'

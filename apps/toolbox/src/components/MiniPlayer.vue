@@ -34,21 +34,21 @@ const defaultCoverUrl = publicAsset('default-music.svg')
 </template>
 
 <style scoped>
+/*
+ * 播放条是卡片的一部分，位于卡片底部，不再悬浮于整个视口。
+ * 由 .app-shell 的 flex 布局把它压到内容区下方。
+ */
 .mini-player {
-  position:fixed;
-  z-index:30;
-  right:0;
-  bottom:0;
-  left:0;
-  display:flex;
-  gap:24px;
-  align-items:center;
-  justify-content:center;
-  height:64px;
-  padding:8px 24px;
-  border-top:1px solid var(--dbk-border);
-  background:#fff;
-  box-shadow:0 -6px 20px rgba(30,54,92,.05);
+  z-index: 30;
+  display: flex;
+  flex-shrink: 0;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  padding: 8px 24px;
+  border-top: 1px solid var(--dbk-border);
+  background: #fff;
 }
 .album-cover { width:48px; height:48px; border-radius:5px; background:#edf1f7; object-fit:cover; }
 .transport { display:flex; gap:10px; align-items:center; justify-content:center; }

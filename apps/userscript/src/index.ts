@@ -10,12 +10,25 @@ import {
 } from '@dbkang/chaoxing'
 import type {
   BridgeContextMessage,
+  BridgeLookMessage,
   CourseAccessResponse,
   HomeworkSnapshotInput,
+  NativeLook,
   RequestContextMessage,
   ToolboxContext,
 } from '@dbkang/shared'
+import { createNavigationButton, NAV_ID } from './navigation-button'
+import type { NativeActiveSnapshot } from './navigation-active'
 import {
+  captureNativeActiveLook,
+  clearNativeActiveLook,
+  findActiveNavigationItems,
+  resolveNativePanelLook,
+  restoreNativeActiveLook,
+} from './navigation-active'
+import { resolveNativeLook } from './navigation-typography'
+import {
+  applyNativePanelLook,
   bindChaoxingNavigationClose,
   configureToolboxFrame,
   findChaoxingNavigationHost,
@@ -25,7 +38,6 @@ import {
 
 const API_BASE_URL = __DBKANG_API_BASE_URL__
 const TOOLBOX_URL = __DBKANG_TOOLBOX_URL__
-const NAV_ID = 'dbkang-toolbox-nav'
 const FRAME_ID = 'dbkang-toolbox-frame'
 const STYLE_ID = 'dbkang-toolbox-style'
 const NAV_WAIT_TIMEOUT_MS = 8_000
@@ -130,9 +142,9 @@ function installToolbox(
   context: ToolboxContext,
   homeworkListUrl: string | null,
 ): { open: (tab?: string) => void } {
-  installToolboxFrameStyle(document, FRAME_ID, STYLE_ID)
-  const navButton = createNavigationButton()
+  installToolboxFrameStyle(document, FRAME_ID, STYLE_ID, NAV_ID)
   const navigationHost = findNavigationHost()
+  const navButton = createNavigationButton(navigationHost)
   navigationHost.append(navButton)
 
   let frame: HTMLIFrameElement | null = null
@@ -140,9 +152,58 @@ function installToolbox(
   let layoutReference: HTMLIFrameElement | null = null
   const layoutObserver = new MutationObserver(() => syncFrameLayout())
 
+  // 记录当前处于高亮态的原生项，关闭时需要把它们恢复回去。
+  // 学习通菜单用类名驱动高亮，若只删不存，关闭工具箱后就再也点不亮原项了。
+  let suspendedActiveItems: NativeActiveSnapshot[] = []
+  const content = navButton.firstElementChild instanceof HTMLElement
+    ? navButton.firstElementChild
+    : navButton
+
+  /**
+   * 接管原生高亮：把高亮外观搬到自己身上，并让原生项退回普通态，
+   * 使界面上任何时刻只有一个高亮项。外观取自真实高亮项，无需猜类名。
+   */
+  const applyToolboxActiveLook = (): void => {
+    const activeItems = findActiveNavigationItems(navigationHost, navButton)
+    const look = captureNativeActiveLook(activeItems)
+    suspendedActiveItems = clearNativeActiveLook(activeItems)
+    navButton.dataset.active = 'true'
+    if (!look) return
+    for (const [property, value] of Object.entries(look)) {
+      try {
+        ;(content.style as unknown as Record<string, string>)[property] = value
+      } catch {
+        // 浏览器不支持该属性时跳过
+      }
+    }
+  }
+
+  /** 归还高亮：先摘掉工具箱的高亮，再把原生项的高亮还原。 */
+  const releaseToolboxActiveLook = (): void => {
+    navButton.dataset.active = 'false'
+    content.removeAttribute('style')
+    if (suspendedActiveItems.length === 0) return
+    restoreNativeActiveLook(suspendedActiveItems)
+    suspendedActiveItems = []
+  }
+
   const syncFrameLayout = (): void => {
     if (!frame) return
-    Object.assign(frame.style, resolveCourseContentFrameLayout(layoutReference, context.role))
+    const layout = resolveCourseContentFrameLayout(layoutReference, context.role)
+    Object.assign(frame.style, layout)
+    // 在原生内容区尺寸基础上内缩出留白，并套上圆角卡片外观，
+    // 让工具箱与学习通原生页卡的边距、圆角、底色保持一致。
+    applyNativePanelLook(frame, resolveNativePanelLook(layoutReference))
+  }
+
+  /**
+   * 把当前用户上下文与实测到的原生排版一起推给工具箱。
+   * 原生页签位于跨域 iframe 内，工具箱读不到它的样式，只能由这里量好后传过去。
+   */
+  const pushContext = (): void => {
+    if (!frame) return
+    sendContext(frame, context)
+    sendNativeLook(frame, resolveNativeLook(navigationHost, layoutReference))
   }
 
   window.addEventListener('resize', syncFrameLayout)
@@ -157,9 +218,9 @@ function installToolbox(
       newFrame.allow = 'autoplay'
       configureToolboxFrame(newFrame)
       const target = new URL(`${TOOLBOX_URL}/`)
-      target.searchParams.set('tab', tab || 'achievements')
+      target.searchParams.set('tab', tab || 'home')
       newFrame.src = target.href
-      newFrame.addEventListener('load', () => sendContext(newFrame, context))
+      newFrame.addEventListener('load', () => pushContext())
       document.body.append(newFrame)
       frame = newFrame
     }
@@ -175,7 +236,7 @@ function installToolbox(
 
     isOpen = true
     setToolboxFrameState(frame, true)
-    navButton.dataset.active = 'true'
+    applyToolboxActiveLook()
     if (context.role === 'student') void syncHomework(context, homeworkListUrl)
   }
 
@@ -184,15 +245,22 @@ function installToolbox(
     isOpen = false
     setToolboxFrameState(frame, false)
     layoutObserver.disconnect()
-    navButton.dataset.active = 'false'
+    releaseToolboxActiveLook()
   }
 
   navButton.addEventListener('click', (event) => {
     event.preventDefault()
     event.stopPropagation()
+    if (isOpen) {
+      // 再次点击自己等同于关闭，与原生菜单的行为保持一致
+      close()
+      return
+    }
     open()
   })
 
+  // 点击原生菜单项时关闭工具箱。close() 内会调用 releaseToolboxActiveLook()
+  // 把高亮归还给原生项，无需在此另挂监听。
   bindChaoxingNavigationClose(navigationHost, navButton, close)
 
   window.addEventListener('message', (event: MessageEvent<unknown>) => {
@@ -202,7 +270,7 @@ function installToolbox(
     }
     if (message.source !== 'dbkang-toolbox') return
     if (message.type === 'DBKANG_REQUEST_CONTEXT') {
-      sendContext(frame, context)
+      pushContext()
       return
     }
     if (message.type === 'DBKANG_OPEN_TOOLBOX_TAB' && message.payload?.tab) {
@@ -213,44 +281,6 @@ function installToolbox(
   })
 
   return { open }
-}
-
-function createNavigationButton(): HTMLElement {
-  const item = document.createElement('li')
-  item.id = NAV_ID
-  item.setAttribute('data-dbkang-nav-item', 'true')
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.innerHTML = '<span aria-hidden="true">DB</span><strong>阿康工具箱</strong>'
-  Object.assign(button.style, {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    minHeight: '40px',
-    padding: '0 14px',
-    border: '0',
-    color: '#334155',
-    font: '14px system-ui, sans-serif',
-    background: 'transparent',
-    cursor: 'pointer',
-    listStyle: 'none',
-  })
-  const mark = button.querySelector('span')
-  if (mark instanceof HTMLElement) {
-    Object.assign(mark.style, {
-      display: 'grid',
-      width: '24px',
-      height: '24px',
-      placeItems: 'center',
-      borderRadius: '6px',
-      color: '#fff',
-      fontSize: '9px',
-      fontWeight: '700',
-      background: '#2f6fe4',
-    })
-  }
-  item.append(button)
-  return item
 }
 
 function findNavigationHost(): HTMLElement {
@@ -308,6 +338,16 @@ function sendContext(frame: HTMLIFrameElement, context: ToolboxContext): void {
     source: 'dbkang-userscript',
     type: 'DBKANG_CONTEXT',
     payload: context,
+  }
+  frame.contentWindow?.postMessage(message, new URL(TOOLBOX_URL).origin)
+}
+
+/** 把实测到的原生排版推给工具箱，供其顶部菜单列套用同样的字体与字号。 */
+function sendNativeLook(frame: HTMLIFrameElement, look: NativeLook): void {
+  const message: BridgeLookMessage = {
+    source: 'dbkang-userscript',
+    type: 'DBKANG_NATIVE_LOOK',
+    payload: look,
   }
   frame.contentWindow?.postMessage(message, new URL(TOOLBOX_URL).origin)
 }

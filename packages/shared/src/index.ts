@@ -43,6 +43,46 @@ export interface RequestContextMessage {
   type: 'DBKANG_REQUEST_CONTEXT'
 }
 
+/**
+ * 从学习通页面实测得到的排版特征，用来让嵌入页卡的工具箱看起来像原生界面。
+ *
+ * 原生内容页签是跨域 iframe，工具箱读不到它的样式，因此由脚本在可读的
+ * 外层文档里量好，再通过消息传给工具箱。全为主动实测值，缺失时才用兜底值。
+ */
+export interface NativeLook {
+  /** 原生正文字体族，例如 `"PingFang SC", "Microsoft YaHei", …`。 */
+  fontFamily: string
+  /** 原生正文字号。 */
+  fontSize: string
+  /** 原生正文字重。 */
+  fontWeight: string
+  /** 原生正文行高。 */
+  lineHeight: string
+  /** 原生正文颜色。 */
+  color: string
+  /** 顶部菜单列左端与卡片边缘之间的空隙。 */
+  navInsetLeft: string
+}
+
+export interface BridgeLookMessage {
+  source: 'dbkang-userscript'
+  type: 'DBKANG_NATIVE_LOOK'
+  payload: NativeLook
+}
+
+/**
+ * 学习通新旧课程页共用的排版近似值。
+ * 只在读不到原生样式时使用（独立预览、或页面结构异常）。
+ */
+export const DEFAULT_NATIVE_LOOK: NativeLook = {
+  fontFamily: '"PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+  fontSize: '14px',
+  fontWeight: '400',
+  lineHeight: '1.5',
+  color: 'rgb(51, 51, 51)',
+  navInsetLeft: '20px',
+}
+
 export interface CourseAccessResponse {
   courseId: string
   status: CourseAccessStatus
@@ -199,3 +239,22 @@ export function isBridgeContextMessage(value: unknown): value is BridgeContextMe
   const message = value as Partial<BridgeContextMessage>
   return message.source === 'dbkang-userscript' && message.type === 'DBKANG_CONTEXT'
 }
+
+export function isBridgeLookMessage(value: unknown): value is BridgeLookMessage {
+  if (!value || typeof value !== 'object') return false
+  const message = value as Partial<BridgeLookMessage>
+  if (message.source !== 'dbkang-userscript' || message.type !== 'DBKANG_NATIVE_LOOK') return false
+  const payload = message.payload
+  if (!payload || typeof payload !== 'object') return false
+  // 只接受六个字段齐全的载荷，避免把残缺的值写进 CSS 变量。
+  return NATIVE_LOOK_KEYS.every((key) => typeof payload[key] === 'string' && payload[key] !== '')
+}
+
+const NATIVE_LOOK_KEYS: Array<keyof NativeLook> = [
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'lineHeight',
+  'color',
+  'navInsetLeft',
+]

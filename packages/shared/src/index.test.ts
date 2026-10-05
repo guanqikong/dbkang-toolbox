@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuration, isBridgeContextMessage } from './index'
+import { DEFAULT_NATIVE_LOOK, formatDuration, isBridgeContextMessage, isBridgeLookMessage } from './index'
 
 describe('shared helpers', () => {
   it('formats focus duration without exposing seconds', () => {
@@ -13,3 +13,43 @@ describe('shared helpers', () => {
   })
 })
 
+describe('isBridgeLookMessage', () => {
+  const payload = DEFAULT_NATIVE_LOOK
+
+  it('accepts a complete native look payload', () => {
+    expect(
+      isBridgeLookMessage({ source: 'dbkang-userscript', type: 'DBKANG_NATIVE_LOOK', payload }),
+    ).toBe(true)
+  })
+
+  it('rejects the wrong envelope', () => {
+    expect(isBridgeLookMessage({ source: 'dbkang-toolbox', type: 'DBKANG_NATIVE_LOOK', payload }))
+      .toBe(false)
+    expect(isBridgeLookMessage({ source: 'dbkang-userscript', type: 'DBKANG_CONTEXT', payload }))
+      .toBe(false)
+  })
+
+  it('rejects a partial payload so CSS variables are never left half written', () => {
+    const { color, ...partial } = payload
+    expect(color).toBeTruthy()
+    expect(isBridgeLookMessage({ source: 'dbkang-userscript', type: 'DBKANG_NATIVE_LOOK', payload: partial }))
+      .toBe(false)
+  })
+
+  it('rejects non-string or empty measurements', () => {
+    expect(
+      isBridgeLookMessage({
+        source: 'dbkang-userscript',
+        type: 'DBKANG_NATIVE_LOOK',
+        payload: { ...payload, fontSize: '' },
+      }),
+    ).toBe(false)
+    expect(
+      isBridgeLookMessage({
+        source: 'dbkang-userscript',
+        type: 'DBKANG_NATIVE_LOOK',
+        payload: { ...payload, fontSize: 14 },
+      }),
+    ).toBe(false)
+  })
+})
