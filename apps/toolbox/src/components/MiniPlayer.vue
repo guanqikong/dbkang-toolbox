@@ -37,6 +37,9 @@ const defaultCoverUrl = publicAsset('default-music.svg')
 /*
  * 播放条是卡片的一部分，位于卡片底部，不再悬浮于整个视口。
  * 由 .app-shell 的 flex 布局把它压到内容区下方。
+ *
+ * 高度与封面尺寸随 iframe 高度收缩（clamp），窗口变矮时让出空间给内容区，
+ * 不至于像固定 64px 那样把子页挤出卡片。
  */
 .mini-player {
   z-index: 30;
@@ -45,16 +48,16 @@ const defaultCoverUrl = publicAsset('default-music.svg')
   gap: 24px;
   align-items: center;
   justify-content: center;
-  height: 64px;
+  height: var(--dbk-player-h, 64px);
   padding: 8px 24px;
   border-top: 1px solid var(--dbk-border);
   background: #fff;
 }
-.album-cover { width:48px; height:48px; border-radius:5px; background:#edf1f7; object-fit:cover; }
+.album-cover { width:clamp(36px, 4.6vh, 48px); height:clamp(36px, 4.6vh, 48px); border-radius:5px; background:#edf1f7; object-fit:cover; }
 .transport { display:flex; gap:10px; align-items:center; justify-content:center; }
-.transport button { display:grid; width:36px; height:36px; padding:0; place-items:center; border:1px solid transparent; border-radius:50%; color:var(--dbk-text-muted); background:transparent; }
+.transport button { display:grid; width:clamp(30px, 3.9vh, 36px); height:clamp(30px, 3.9vh, 36px); padding:0; place-items:center; border:1px solid transparent; border-radius:50%; color:var(--dbk-text-muted); background:transparent; }
 .transport button:hover { color:var(--dbk-text); background:#f1f4f8; }
 .transport svg { width:19px; height:19px; fill:currentColor; }
-.transport .play-button { width:40px; height:40px; color:#fff; background:var(--dbk-primary); }
+.transport .play-button { width:clamp(32px, 4.2vh, 40px); height:clamp(32px, 4.2vh, 40px); color:#fff; background:var(--dbk-primary); }
 .transport .play-button:hover { color:#fff; background:var(--dbk-primary-hover); }
 </style>

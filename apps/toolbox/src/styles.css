@@ -1,16 +1,85 @@
+/*
+ * 卡片布局：让工具箱页卡刚好等于 iframe 视口，既不溢出也不留白。
+ *
+ * 高度用一条 100% 链路传递：html → body → #app → .app-shell。
+ * 卡片是 #app 的 flex 子项并吃掉剩余高度，因此它的盒高恒等于
+ * 「iframe 高度 − 上下留白」。这里刻意不用 `min-height: 100vh`，
+ * 也不叠 `height: calc(100dvh - 60px)`：前者必然多出 60px，
+ * 后者一旦外层留白变化就会漂移，两者都会在每次打开时顶出纵向滚动条。
+ *
+ * 各子页再用 flex 分摊卡片剩余高度，窗口变高时子页按比例长高；
+ * 固定像素的条与留白则改用 clamp() 随高度收缩，窗口变矮时同步压缩，
+ * 正好摆在卡片内而不会把内容挤出去。
+ */
+:root {
+  /* 卡片与视口边缘之间的留白，与原生页卡一致 */
+  --dbk-card-gutter: 30px;
+}
+
+/* 覆盖 packages/ui 的 min-height: 100%，改用确定高度才能算准剩余空间 */
+html,
+body,
+#app {
+  height: 100%;
+  min-height: 0;
+}
+
 body {
   overflow-x: auto;
 }
 
-.app-shell {
+/* #app 作为列向 flex 容器，卡片才能靠 flex 分到「视口 − 留白」的高度 */
+#app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  margin: 30px;
+}
+
+/*
+ * 学习通课程内容区是「灰底 + 白色卡片」，工具箱被嵌在同一位置，
+ * 因此窗口自身铺同一层灰底（底色定义见 packages/ui），再由卡片承载内容，
+ * 避免与原生页卡出现两套底色。
+ *
+ * 卡片：复刻原生页卡的留白与圆角。
+ * 数值取自真实页面截图的逐像素测量：留白 30px、圆角 5px。
+ */
+.app-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin: var(--dbk-card-gutter);
   overflow: hidden;
   border-radius: 5px;
   background: var(--dbk-surface);
   box-shadow: 0 1px 3px rgba(24, 35, 56, 0.06);
+  /*
+   * 随视口高度伸缩的纵向节奏。iframe 越矮，顶部功能条、播放条与
+   * 内容留白同步收缩，把空间让给子页本身，避免固定像素撑破卡片。
+   */
+  --dbk-bar-h: clamp(44px, 5.6vh, 56px);
+  --dbk-player-h: clamp(50px, 6.4vh, 64px);
+  --dbk-gap: clamp(10px, 1.8vh, 22px);
+}
+
+/*
+ * 主内容区吃掉卡片剩余高度并把音乐播放条压到卡片底部。
+ * 自身是 flex 容器，子页才能按比例分到可用高度。
+ */
+.app-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: min(1240px, calc(100vw - 64px));
+  min-height: 0;
+  margin: 0 auto;
+  padding: var(--dbk-gap) 0;
+}
+
+/* 自习间是整屏房间：去掉内容区的宽度与内边距限制，铺满卡片 */
+.app-content--room {
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /*
@@ -28,7 +97,8 @@ body {
   top: 0;
   display: flex;
   align-items: stretch;
-  min-height: 56px;
+  flex: 0 0 auto;
+  min-height: var(--dbk-bar-h, 56px);
   border-bottom: 1px solid var(--dbk-border);
   background: var(--dbk-surface);
 }
@@ -109,50 +179,10 @@ body {
   object-fit: cover;
 }
 
-.app-content {
-  width: min(1240px, calc(100vw - 64px));
-  margin: 0 auto;
-  padding: 28px 0 48px;
-}
-
-.app-content--room {
-  width: 100%;
-  height: calc(100vh - 128px);
-  min-height: 552px;
-  margin: 0;
-  padding: 0;
-}
-
-/*
- * 学习通课程内容区是「灰底 + 白色卡片」，工具箱被嵌在同一位置，
- * 因此窗口自身铺同一层灰底（底色定义见 packages/ui），再由卡片承载内容，
- * 避免与原生页卡出现两套底色。
- */
-
-/*
- * 卡片：复刻原生页卡的留白与圆角。
- * 数值取自真实页面截图的逐像素测量：留白 30px、圆角 5px。
- */
-.app-shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  margin: 30px;
-  overflow: hidden;
-  border-radius: 5px;
-  background: var(--dbk-surface);
-  box-shadow: 0 1px 3px rgba(24, 35, 56, 0.06);
-}
-
-/* 主内容区撑满卡片剩余高度，把音乐播放条压到卡片底部 */
-.app-content {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
 .state-page {
   display: grid;
-  min-height: 100vh;
+  flex: 1 1 auto;
+  min-height: 0;
   place-content: center;
   justify-items: center;
   color: var(--dbk-text-muted);

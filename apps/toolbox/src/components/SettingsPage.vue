@@ -199,8 +199,15 @@ function identity(): { role: BootstrapResponse['user']['role']; studentId: strin
 <style scoped>
 .settings-page {
   display: grid;
+  /* align-content:start 让两张卡贴顶排列，剩余高度留在下方，不被拉伸 */
+  flex: 1 1 auto;
+  align-content: start;
   gap: 18px;
+  width: 100%;
   max-width: 640px;
+  min-height: 0;
+  margin-inline: auto;
+  overflow-y: auto;
 }
 
 .preference {

@@ -592,24 +592,35 @@ function emitPreferences(partial: Partial<UserPreferences>): void {
 </template>
 
 <style scoped>
-.lofi-page { height:100%; min-height:552px; color:#fff; background:#111722; }
-.room-shell { display:grid; grid-template-rows:68px minmax(0,1fr) 48px; height:100%; min-height:552px; }
-.room-rail { display:flex; align-items:center; padding:0 24px; background:#111722; }
+/*
+ * 房间按卡片剩余高度铺开：顶栏与底栏固定，中间区域吃掉多余高度，
+ * 因此窗口变高时房间跟着长高，变矮时也不会溢出卡片。
+ * 原先这里写的是 min-height:552px 配 calc(100vh - 128px)，
+ * 既撑出滚动条，又让房间比实际可用高度矮一截。
+ *
+ * 房间是六个页卡里唯一自带上下两条轨道的：68px 顶栏、52px 倒计时、
+ * 若干固定内边距叠起来，在矮窗口下最容易把内容顶出卡片。
+ * 因此这些固定像素全部改成 clamp() 随视口高度收缩，窗口越矮压得越紧，
+ * 保证控件始终完整落在卡片内；变高时又回到原来的宽松尺寸。
+ */
+.lofi-page { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; color:#fff; background:#111722; }
+.room-shell { display:grid; flex:1 1 auto; grid-template-rows:clamp(44px, 6vh, 68px) minmax(0,1fr) clamp(34px, 4.2vh, 48px); min-height:0; }
+.room-rail { display:flex; align-items:center; padding:0 clamp(14px, 2vw, 24px); background:#111722; }
 .room-rail--top { justify-content:space-between; border-bottom:1px solid rgba(255,255,255,.1); }
 .room-title p { margin:0 0 3px; color:rgba(255,255,255,.52); font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
-.room-title h1 { margin:0; font-size:20px; font-weight:560; }
+.room-title h1 { margin:0; font-size:clamp(16px, 2.2vh, 20px); font-weight:560; }
 .online-state { display:flex; gap:8px; align-items:center; color:rgba(255,255,255,.72); font-size:12px; }
 .online-state span { width:8px; height:8px; border-radius:50%; background:#6ee7b7; box-shadow:0 0 0 3px rgba(110,231,183,.12); }
 .online-state span.offline { background:#f0b861; box-shadow:none; }
-.room-body { display:grid; grid-template-columns:168px minmax(460px,1fr) 252px; min-height:0; padding:12px; gap:12px; }
-.room-side { min-height:0; padding:18px 16px; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#171f2c; }
-.side-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:13px; font-weight:600; }
+.room-body { display:grid; grid-template-columns:168px minmax(460px,1fr) 252px; min-height:0; padding:clamp(8px, 1.4vh, 12px); gap:clamp(8px, 1.4vh, 12px); }
+.room-side { min-height:0; padding:clamp(10px, 1.8vh, 18px) 16px; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#171f2c; }
+.side-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:clamp(8px, 1.4vh, 14px); font-size:13px; font-weight:600; }
 .side-heading small { color:#f0b861; font-size:10px; font-weight:400; }
-.ambience-options { display:grid; gap:8px; }
-.ambience-options button { min-height:40px; padding:0 10px; border:1px solid rgba(255,255,255,.12); border-radius:6px; color:rgba(255,255,255,.72); text-align:left; background:rgba(255,255,255,.035); }
+.ambience-options { display:grid; gap:clamp(5px, .9vh, 8px); }
+.ambience-options button { min-height:clamp(30px, 4.2vh, 40px); padding:0 10px; border:1px solid rgba(255,255,255,.12); border-radius:6px; color:rgba(255,255,255,.72); text-align:left; background:rgba(255,255,255,.035); }
 .ambience-options button:hover, .ambience-options button.active { border-color:#6798f2; color:#fff; background:rgba(47,111,228,.28); }
 .ambience-options button:disabled { color:rgba(255,255,255,.28); cursor:not-allowed; }
-.volume-control { display:grid; gap:9px; margin-top:20px; color:rgba(255,255,255,.48); font-size:11px; }
+.volume-control { display:grid; gap:9px; margin-top:clamp(10px, 1.8vh, 20px); color:rgba(255,255,255,.48); font-size:11px; }
 .volume-control input { width:100%; accent-color:#78a5f6; }
 .room-video-frame { position:relative; min-width:0; min-height:0; overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#202a3a; }
 .room-background { display:block; width:100%; height:100%; object-fit:cover; }
@@ -619,17 +630,18 @@ function emitPreferences(partial: Partial<UserPreferences>): void {
 .room-blocker .loading-line { margin:0 auto; background:rgba(255,255,255,.2); }
 .room-side--timer { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
 .round-label { color:rgba(255,255,255,.5); font-size:11px; letter-spacing:.08em; }
-.timer-value { margin:11px 0 3px; font-size:52px; font-weight:500; line-height:1; letter-spacing:-.05em; font-variant-numeric:tabular-nums; }
+/* 倒计时是房间里最大的一块固定像素，按可用高度收缩才不会顶出侧栏 */
+.timer-value { margin:clamp(6px, 1.4vh, 11px) 0 3px; font-size:clamp(28px, 5vh, 52px); font-weight:500; line-height:1; letter-spacing:-.05em; font-variant-numeric:tabular-nums; }
 .room-side--timer > p { margin:6px 0 0; color:rgba(255,255,255,.45); font-size:11px; }
-.timer-settings { display:grid; gap:7px; width:100%; margin-top:18px; }
+.timer-settings { display:grid; gap:clamp(4px, .8vh, 7px); width:100%; margin-top:clamp(10px, 1.8vh, 18px); }
 .timer-settings label { display:grid; grid-template-columns:42px 1fr 30px; gap:6px; align-items:center; color:rgba(255,255,255,.52); font-size:10px; text-align:left; }
-.timer-settings .dbk-input { min-height:32px; padding:5px 8px; border-color:rgba(255,255,255,.14); color:#fff; text-align:center; background:rgba(255,255,255,.06); }
+.timer-settings .dbk-input { min-height:clamp(26px, 3.4vh, 32px); padding:5px 8px; border-color:rgba(255,255,255,.14); color:#fff; text-align:center; background:rgba(255,255,255,.06); }
 .timer-settings small { color:rgba(255,255,255,.38); }
-.timer-actions { display:flex; gap:8px; width:100%; margin-top:18px; }
+.timer-actions { display:flex; gap:8px; width:100%; margin-top:clamp(10px, 1.8vh, 18px); }
 .timer-actions .dbk-button { flex:1; padding:0 12px; }
 .room-secondary { border-color:rgba(255,255,255,.16); color:#fff; background:transparent; }
 .room-secondary:hover { border-color:rgba(255,255,255,.28); background:rgba(255,255,255,.06); }
-.room-rail--bottom { gap:18px; padding-right:32px; padding-left:32px; overflow:hidden; border-top:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.48); font-size:11px; }
+.room-rail--bottom { gap:18px; padding-right:clamp(18px, 3vw, 32px); padding-left:clamp(18px, 3vw, 32px); overflow:hidden; border-top:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.48); font-size:11px; }
 .room-rail--bottom span { flex:none; white-space:nowrap; }
 .room-rail--bottom strong { color:#fff; font-size:13px; font-weight:500; }
 .room-rail--bottom small { margin-left:auto; color:rgba(255,255,255,.34); }

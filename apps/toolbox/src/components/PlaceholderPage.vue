@@ -15,11 +15,15 @@ defineProps<{ title: string }>()
 <style scoped>
 .placeholder-page {
   display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
   place-items: center;
 }
 
 .dbk-empty {
   gap: 8px;
+  /* 覆盖 packages/ui 的固定 220px，窗口偏矮时不至于把占位卡片顶出卡片 */
+  min-height: min(220px, 42vh);
 }
 
 strong {

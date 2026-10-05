@@ -98,25 +98,31 @@ function formatDuration(seconds: number | null): string {
 </template>
 
 <style scoped>
-.page-heading { display:flex; justify-content:space-between; align-items:end; margin-bottom:20px; }
+/*
+ * 页面撑满内容区剩余高度，歌单侧栏与曲目列表各自内部滚动。
+ * 原先这里写的是 min-height:560px，窗口稍矮就会把整页撑出滚动条，
+ * 改为 flex 分摊高度后，列表再长也只在列表内部滚动。
+ */
+.music-page { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; }
+.page-heading { display:flex; flex:0 0 auto; justify-content:space-between; align-items:end; margin-bottom:var(--dbk-gap, 20px); }
 .page-heading p { margin:0 0 5px; color:var(--dbk-text-muted); font-size:13px; }
-.page-heading h1 { margin:0; font-size:28px; }
+.page-heading h1 { margin:0; font-size:clamp(20px, 3vh, 28px); }
 .player-settings { display:flex; gap:24px; align-items:end; }
 .player-settings label { display:grid; gap:7px; color:var(--dbk-text-muted); font-size:12px; }
 .player-settings select { width:150px; }
 .player-settings input { width:160px; accent-color:var(--dbk-primary); }
-.library-layout { display:grid; grid-template-columns:260px 1fr; min-height:560px; overflow:hidden; }
-aside { padding:18px; border-right:1px solid var(--dbk-border); background:#fafbfd; }
+.library-layout { display:grid; flex:1 1 auto; grid-template-columns:260px 1fr; min-height:0; overflow:hidden; }
+aside { min-height:0; padding:18px; overflow-y:auto; border-right:1px solid var(--dbk-border); background:#fafbfd; }
 aside h2 { margin:0 0 12px; font-size:14px; }
 aside button { display:flex; gap:10px; align-items:center; width:100%; padding:9px; border:0; border-radius:6px; color:var(--dbk-text); text-align:left; background:transparent; }
 aside button:hover, aside button.active { background:var(--dbk-primary-soft); }
 aside img { width:42px; height:42px; border-radius:5px; object-fit:cover; }
 aside span, .track-title { display:grid; min-width:0; }
 aside small, .track-title small { margin-top:3px; color:var(--dbk-text-muted); }
-.track-list { padding:8px 18px 18px; }
+.track-list { min-height:0; padding:8px 18px 18px; overflow-y:auto; }
 .track-list__header { display:flex; justify-content:space-between; padding:16px 10px; border-bottom:1px solid var(--dbk-border); }
 .track-list__header span { color:var(--dbk-text-muted); font-size:12px; }
-.empty-tracks { display:grid; min-height:220px; place-items:center; color:var(--dbk-text-muted); font-size:13px; }
+.empty-tracks { display:grid; min-height:min(220px, 40%); place-items:center; color:var(--dbk-text-muted); font-size:13px; }
 .track-row { display:grid; grid-template-columns:34px 44px minmax(180px,1.4fr) minmax(120px,1fr) 60px; gap:12px; align-items:center; width:100%; padding:9px 10px; border:0; border-bottom:1px solid #eef1f5; color:var(--dbk-text-muted); text-align:left; background:#fff; }
 .track-row:hover, .track-row.active { background:#f7f9fc; }
 .track-row.active .track-title strong { color:var(--dbk-primary); }

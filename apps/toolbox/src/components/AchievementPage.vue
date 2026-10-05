@@ -13,7 +13,7 @@ const defaultAchievementUrl = publicAsset('default-achievement.svg')
 </script>
 
 <template>
-  <section>
+  <section class="achievement-page">
     <div v-if="data.announcements.length" class="announcement dbk-panel">
       <div class="announcement__marker">公告</div>
       <div><strong>{{ data.announcements[currentAnnouncement]?.title }}</strong><p>{{ data.announcements[currentAnnouncement]?.content }}</p></div>
@@ -53,18 +53,24 @@ const defaultAchievementUrl = publicAsset('default-achievement.svg')
 </template>
 
 <style scoped>
-.announcement { display:grid; grid-template-columns:auto 1fr 220px; gap:14px; align-items:center; margin-bottom:26px; padding:14px 18px; }
+/*
+ * 页面撑满内容区剩余高度：公告与页头保持自身高度，
+ * 成就列表吃掉剩余空间并自己滚动，卡片多时也不会把整页撑出滚动条。
+ */
+.achievement-page { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; }
+.announcement { display:grid; flex:0 0 auto; grid-template-columns:auto 1fr 220px; gap:14px; align-items:center; margin-bottom:var(--dbk-gap, 20px); padding:14px 18px; }
 .announcement__marker { padding:5px 9px; border-radius:5px; color:var(--dbk-primary); font-size:12px; background:var(--dbk-primary-soft); }
 .announcement strong { font-size:14px; }
 .announcement p { margin:3px 0 0; color:var(--dbk-text-muted); font-size:13px; white-space:pre-wrap; }
-.achievement-header { display:flex; justify-content:space-between; align-items:end; margin-bottom:22px; }
+.achievement-header { display:flex; flex:0 0 auto; justify-content:space-between; align-items:end; margin-bottom:var(--dbk-gap, 20px); }
 .achievement-header p { margin:0 0 5px; color:var(--dbk-text-muted); font-size:13px; }
-.achievement-header h1 { margin:0; font-size:28px; }
+.achievement-header h1 { margin:0; font-size:clamp(20px, 3vh, 28px); }
 .achievement-header dl { display:flex; gap:44px; margin:0; }
 .achievement-header dl div { display:grid; gap:4px; }
 .achievement-header dt { color:var(--dbk-text-muted); font-size:12px; }
 .achievement-header dd { margin:0; font-size:18px; font-weight:650; }
-.achievement-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+/* align-content:start 让卡片保持自然高度贴顶排列，剩余空间留在下方 */
+.achievement-grid { display:grid; flex:1 1 auto; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:14px; min-height:0; overflow-y:auto; }
 .achievement-card { display:grid; grid-template-columns:94px 1fr; gap:16px; min-height:142px; padding:18px; border:1px solid var(--dbk-border); border-radius:9px; background:#fff; }
 .achievement-card.locked { background:#fafbfd; }
 .achievement-card > img { width:94px; height:94px; border-radius:8px; object-fit:cover; }
