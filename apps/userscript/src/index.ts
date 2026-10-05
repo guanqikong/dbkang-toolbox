@@ -5,8 +5,11 @@ import {
   extractHomeworkDetail,
   extractHomeworkList,
   extractHomeworkSnapshots,
+  isOverlayPosition,
+  limitOverlayHeight,
   parseStudentNumber,
   resolveCourseContentFrameLayout,
+  resolveOverlayOffsets,
 } from '@dbkang/chaoxing'
 import type {
   BridgeContextMessage,
@@ -41,6 +44,10 @@ const TOOLBOX_URL = __DBKANG_TOOLBOX_URL__
 const FRAME_ID = 'dbkang-toolbox-frame'
 const STYLE_ID = 'dbkang-toolbox-style'
 const NAV_WAIT_TIMEOUT_MS = 8_000
+
+// 找不到原生内容框时的兜底内容区位置，对应旧版课程页的页头高度与菜单宽度。
+const CONTENT_AREA_INSET = 52
+const CONTENT_AREA_INSET_LEFT = 180
 
 let installStarted = false
 
@@ -187,6 +194,76 @@ function installToolbox(
     suspendedActiveItems = []
   }
 
+  /**
+   * 叠放定位：工具箱窗口必须绝对定位或固定定位。
+   *
+   * 原生内容区在新旧课程页上都不一定是定位元素，一旦照抄成常规流，
+   * 工具箱窗口就会排到外层页面正常内容的后面，把文档高度额外撑高
+   * 一整个视口，浏览器最右侧就会多出一条纵向滚动条。
+   * 这里检测到常规流就改用实测矩形换算偏移。
+   */
+  const enforceOverlayPosition = (): void => {
+    if (!frame) return
+    const position = getComputedStyle(frame).position
+    if (isOverlayPosition(position)) return
+    const reference = layoutReference?.getBoundingClientRect()
+    if (!reference) {
+      // 没有原生内容区可参照时，只能自行铺满内容区，避免落回常规流。
+      frame.style.position = 'absolute'
+      frame.style.inset = `${CONTENT_AREA_INSET} 0 0 ${CONTENT_AREA_INSET_LEFT}`
+      frame.style.top = `${CONTENT_AREA_INSET}`
+      frame.style.left = `${CONTENT_AREA_INSET_LEFT}`
+      frame.style.right = '0'
+      frame.style.bottom = '0'
+      return
+    }
+    const parent = layoutReference?.offsetParent
+    const offsets = resolveOverlayOffsets({
+      reference: { top: reference.top, left: reference.left },
+      offsetParent: parent
+        ? {
+            top: parent.getBoundingClientRect().top,
+            left: parent.getBoundingClientRect().left,
+            clientTop: parent.clientTop,
+            clientLeft: parent.clientLeft,
+          }
+        : null,
+      scroll: { x: window.scrollX, y: window.scrollY },
+    })
+    frame.style.position = 'absolute'
+    frame.style.inset = 'auto'
+    frame.style.top = offsets.top
+    frame.style.left = offsets.left
+    frame.style.bottom = 'auto'
+    frame.style.right = 'auto'
+  }
+
+  /**
+   * 高度封顶：叠放窗口的底边不得探出外层页面本来就有的滚动范围。
+   *
+   * 外层页面的滚动高度至少是视口高度，也至少是原生内容区的底边；
+   * 工具箱窗口比这更高时，超出部分就会把最右侧的纵向滚动条顶出来。
+   * 工具箱内部按可用高度等比伸缩，少掉的高度由子页让位。
+   */
+  const clampFrameHeight = (): void => {
+    if (!frame) return
+    const rect = frame.getBoundingClientRect()
+    if (rect.height <= 0) return
+    const maxHeight = limitOverlayHeight({
+      requested: rect.height,
+      top: rect.top + window.scrollY,
+      viewportHeight: document.documentElement.clientHeight,
+      referenceBottom: layoutReference
+        ? layoutReference.getBoundingClientRect().bottom + window.scrollY
+        : null,
+      scrollY: window.scrollY,
+    })
+    // 只在超高时收紧；正常高度保持原生实测值不动，避免与原生页卡差出缝隙。
+    if (maxHeight + 0.5 < rect.height) {
+      frame.style.height = `${Math.max(0, Math.round(maxHeight))}px`
+    }
+  }
+
   const syncFrameLayout = (): void => {
     if (!frame) return
     const layout = resolveCourseContentFrameLayout(layoutReference, context.role)
@@ -194,6 +271,8 @@ function installToolbox(
     // 在原生内容区尺寸基础上内缩出留白，并套上圆角卡片外观，
     // 让工具箱与学习通原生页卡的边距、圆角、底色保持一致。
     applyNativePanelLook(frame, resolveNativePanelLook(layoutReference))
+    enforceOverlayPosition()
+    clampFrameHeight()
   }
 
   /**
@@ -221,7 +300,12 @@ function installToolbox(
       target.searchParams.set('tab', tab || 'home')
       newFrame.src = target.href
       newFrame.addEventListener('load', () => pushContext())
-      document.body.append(newFrame)
+      // 紧挨原生内容框插入，让两者共享同一个定位容器。
+      // 挂在 body 下时，原生内容框的 top/left 是相对它自己的容器解析的，
+      // 照抄过来会因为容器不同而整体偏移。
+      const host = reference?.parentElement
+      if (host) host.insertBefore(newFrame, reference.nextSibling)
+      else document.body.append(newFrame)
       frame = newFrame
     }
     layoutReference = reference

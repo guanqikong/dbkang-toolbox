@@ -197,6 +197,92 @@ export function resolveCourseContentFrameLayout(
   }
 }
 
+/** 元素在页面上的实测矩形（视口坐标）。 */
+export interface MeasuredRect {
+  top: number
+  left: number
+}
+
+/** 定位容器的边框盒信息，用于把视口坐标换算成相对容器的偏移。 */
+export interface OffsetParentBox extends MeasuredRect {
+  clientTop: number
+  clientLeft: number
+}
+
+/**
+ * 叠放窗口的定位方式。
+ *
+ * 工具箱窗口是盖在原生内容区之上的 iframe，而不是原生内容区的兄弟节点，
+ * 因此定位方式必须是 `absolute` 或 `fixed`：
+ * 一旦落回常规流，它就会排在外层页面的正常内容后面，
+ * 把文档高度额外撑高一整个视口，浏览器最右侧就会多出一条纵向滚动条。
+ */
+export function isOverlayPosition(position: string): boolean {
+  return position === 'absolute' || position === 'fixed'
+}
+
+/**
+ * 把原生内容区的实测位置换算成叠放窗口该用的偏移量。
+ *
+ * 直接照抄原生内容区的 `top` / `left` 并不安全：那两个值是相对它自己的
+ * 定位容器解析出来的，而工具箱窗口挂在 `document.body` 下，容器未必相同。
+ * 所以这里统一按实测矩形换算：有定位容器就相对容器，没有就相对初始包含块
+ * （此时需要补上外层页面的滚动距离）。
+ */
+export function resolveOverlayOffsets(options: {
+  /** 原生内容区的实测矩形（视口坐标） */
+  reference: MeasuredRect
+  /** 原生内容框的定位容器；null 表示相对初始包含块 */
+  offsetParent: OffsetParentBox | null
+  /** 外层页面的滚动距离 */
+  scroll: { x: number; y: number }
+}): { top: string; left: string } {
+  const { reference, offsetParent, scroll } = options
+  if (!offsetParent) {
+    return {
+      top: `${Math.round(reference.top + scroll.y)}px`,
+      left: `${Math.round(reference.left + scroll.x)}px`,
+    }
+  }
+  return {
+    top: `${Math.round(reference.top - offsetParent.top + offsetParent.clientTop)}px`,
+    left: `${Math.round(reference.left - offsetParent.left + offsetParent.clientLeft)}px`,
+  }
+}
+
+/**
+ * 叠放窗口允许的最大高度。
+ *
+ * 外层页面的滚动高度至少等于视口高度，也至少等于原生内容区的底边
+ * （原生内容框仍在文档里，只是被工具箱盖住了）。叠放窗口若比这还高，
+ * 底边就会探出文档边界，于是最右侧出现纵向滚动条。
+ *
+ * 因此把高度收在这个上限内；工具箱内部本来就按可用高度等比伸缩，
+ * 少掉的高度由子页让位，不会切掉内容。
+ *
+ * @returns 允许的最大高度（px）；上限不为正时返回 0，表示这一帧不该显示
+ */
+export function limitOverlayHeight(options: {
+  /** 请求的高度（px），通常取自原生内容区的实测高度 */
+  requested: number
+  /** 叠放窗口顶边在外层文档中的位置（px） */
+  top: number
+  /** 视口高度；用 clientHeight 以排除水平滚动条占位 */
+  viewportHeight: number
+  /** 原生内容区底边在外层文档中的位置（px）；没有参考框时传 null */
+  referenceBottom: number | null
+  /** 外层页面的垂直滚动距离（px） */
+  scrollY: number
+}): number {
+  const documentBottom = Math.max(
+    options.scrollY + options.viewportHeight,
+    options.referenceBottom ?? 0,
+  )
+  const limit = documentBottom - options.top
+  if (limit <= 0) return 0
+  return Math.min(options.requested, limit)
+}
+
 export function extractCourseId(document: Document, location: Location | URL): string | null {
   const fromUrl = queryValue(location, COURSE_ID_KEYS)
   if (fromUrl) return fromUrl

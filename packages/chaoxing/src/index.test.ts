@@ -10,8 +10,11 @@ import {
   extractHomeworkDetail,
   extractHomeworkList,
   extractHomeworkSnapshots,
+  isOverlayPosition,
+  limitOverlayHeight,
   parseStudentNumber,
   resolveCourseContentFrameLayout,
+  resolveOverlayOffsets,
 } from './index'
 
 describe('Chaoxing adapter', () => {
@@ -135,6 +138,90 @@ describe('Chaoxing adapter', () => {
       height: '567px',
       minHeight: '0',
     })
+  })
+
+  it('rejects a normal-flow position so the overlay cannot push the outer page taller', () => {
+    expect(isOverlayPosition('absolute')).toBe(true)
+    expect(isOverlayPosition('fixed')).toBe(true)
+    // 常规流会把工具箱窗口排到外层页面正常内容之后，把文档撑高一个视口，
+    // 于是浏览器最右侧出现纵向滚动条，因此必须判定为不可用。
+    expect(isOverlayPosition('static')).toBe(false)
+    expect(isOverlayPosition('relative')).toBe(false)
+    expect(isOverlayPosition('sticky')).toBe(false)
+  })
+
+  it('converts the measured content rect into overlay offsets relative to its own container', () => {
+    expect(
+      resolveOverlayOffsets({
+        // 原生内容框实测位于视口 52/180 处
+        reference: { top: 52, left: 180 },
+        // 它的定位容器在文档 0/0 处，无边框
+        offsetParent: { top: 0, left: 0, clientTop: 0, clientLeft: 0 },
+        scroll: { x: 0, y: 0 },
+      }),
+    ).toEqual({ top: '52px', left: '180px' })
+
+    // 定位容器带边框时，偏移要从容器的内边距盒算起，否则会整体偏出边框宽度
+    expect(
+      resolveOverlayOffsets({
+        reference: { top: 60, left: 190 },
+        offsetParent: { top: 8, left: 10, clientTop: 2, clientLeft: 2 },
+        scroll: { x: 0, y: 0 },
+      }),
+    ).toEqual({ top: '54px', left: '182px' })
+
+    // 没有定位容器时相对初始包含块，需要补上外层页面的滚动距离
+    expect(
+      resolveOverlayOffsets({
+        reference: { top: 52, left: 180 },
+        offsetParent: null,
+        scroll: { x: 7, y: 300 },
+      }),
+    ).toEqual({ top: '352px', left: '187px' })
+  })
+
+  it('caps the overlay height so the outer page keeps its native scroll extent', () => {
+    const base = {
+      top: 52,
+      viewportHeight: 900,
+      scrollY: 0,
+    }
+    // 视口底部就是上限：820 + 52 正好等于视口，不产生额外滚动
+    expect(
+      limitOverlayHeight({ ...base, requested: 848, referenceBottom: 900 }),
+    ).toBe(848)
+
+    // 超过视口底部就压回来，浏览器最右侧不会再出现纵向滚动条
+    expect(
+      limitOverlayHeight({ ...base, requested: 960, referenceBottom: 900 }),
+    ).toBe(848)
+
+    // 原生内容区本身就探出视口时，以它的底边为准，保持与原生一致的滚动范围
+    expect(
+      limitOverlayHeight({ ...base, requested: 960, referenceBottom: 1010 }),
+    ).toBe(958)
+
+    // 找不到原生内容框时退化为视口高度
+    expect(
+      limitOverlayHeight({ ...base, requested: 960, referenceBottom: null }),
+    ).toBe(848)
+
+    // 顶边已经落到文档底部之外时不显示，返回 0
+    expect(
+      limitOverlayHeight({ ...base, top: 900, requested: 400, referenceBottom: 900 }),
+    ).toBe(0)
+
+    // 视口被横向滚动条压矮时按 clientHeight 算。
+    // 有原生内容框时它的底边已经撑住文档，不受横向滚动条影响，所以这里取无参考框的情况。
+    expect(
+      limitOverlayHeight({
+        top: 52,
+        requested: 880,
+        viewportHeight: 885,
+        referenceBottom: null,
+        scrollY: 0,
+      }),
+    ).toBe(833)
   })
 
   it('parses the signed-in account identity for the matching institution', () => {
