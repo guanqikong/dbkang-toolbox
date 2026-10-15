@@ -20,7 +20,7 @@ describe('portable browser common helpers', () => {
 
   it('rejects paths escaping the portable root', () => {
     expect(() => safeResolve('/tmp/root', '../outside')).toThrow(/不安全/)
-    expect(safeResolve('/tmp/root', 'browser/chrome.exe')).toContain('browser/chrome.exe')
+    expect(safeResolve('/tmp/root', 'browser/chrome.exe')).toBe(resolve('/tmp/root', 'browser/chrome.exe'))
   })
 
   it('never treats user state as a managed program file', () => {

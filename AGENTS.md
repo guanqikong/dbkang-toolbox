@@ -31,3 +31,9 @@ Update version numbers only when the user explicitly requests it. After every co
 ## Security & Domain Rules
 
 Never commit credentials, cookies, student PII, `.env`, databases, or `user-data/`. Do not invent unstable Chaoxing endpoints; derive adapters from authorized Network/DOM evidence and sanitize fixtures. Treat `courseId` and `classId` (`clazzid`) as identities; course and class names are display-only. Keep student, admin, API, and update endpoints on the unified deployment origin.
+
+**注意事项**
+
+每次改动完成后，都必须创建一个对应的Git commit，以便后续追踪和回滚。
+
+每次改动后，都必须编写或更新相关测试，并在交付给用户前，确保所有测试和验证全部通过。
