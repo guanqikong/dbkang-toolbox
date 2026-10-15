@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 
-declare const __DBKANG_API_BASE_URL__: string
-declare const __DBKANG_TOOLBOX_URL__: string
+declare const __DBKANG_LOCAL_BASE_URL__: string
+declare const __DBKANG_FALLBACK_BASE_URL__: string
+declare const __DBKANG_LOCAL_TOOLBOX_URL__: string
+declare const __DBKANG_FALLBACK_TOOLBOX_URL__: string
 
 interface GMXmlHttpRequestResponse {
   status: number

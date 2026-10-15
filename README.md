@@ -33,6 +33,8 @@ pnpm dev
 
 Docker Compose 把学生端挂载到 `/toolbox/`、管理端挂载到 `/admin/`。Lo-fi 视频与环境音位于 `server/assets/lofi/`，构建镜像时写入 `/app/assets/lofi/`；修改后需要重新构建镜像。歌曲不会进入镜像，运行时只读挂载 `server/assets/music/` 到 `/app/assets/music/`。每个歌单使用一个子目录并在其中放置 MP3，增删歌曲后重启服务以重新扫描。部署前还需把 `DBKANG_PUBLIC_BASE_URL` 设置为对外域名。
 
+Userscript 支持本地优先、公网回退：先检查 `VITE_DBKANG_LOCAL_BASE_URL`（默认 `http://localhost:8000`）的 `/health`，不可用时再检查 `VITE_DBKANG_FALLBACK_BASE_URL`。将 `VITE_DBKANG_FALLBACK_BASE_URL` 和 `VITE_DBKANG_UPDATE_BASE_URL` 设为公网服务地址后，脚本会从可用服务加载工具箱，并从公网地址检查脚本更新。
+
 ## 验证
 
 ```bash

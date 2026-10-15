@@ -30,6 +30,7 @@ import {
   restoreNativeActiveLook,
 } from './navigation-active'
 import { resolveNativeLook } from './navigation-typography'
+import { resolveRuntimeService } from './runtime-service'
 import {
   applyNativePanelLook,
   bindChaoxingNavigationClose,
@@ -39,8 +40,8 @@ import {
   setToolboxFrameState,
 } from './toolbox-frame'
 
-const API_BASE_URL = __DBKANG_API_BASE_URL__
-const TOOLBOX_URL = __DBKANG_TOOLBOX_URL__
+let API_BASE_URL = ''
+let TOOLBOX_URL = ''
 const FRAME_ID = 'dbkang-toolbox-frame'
 const STYLE_ID = 'dbkang-toolbox-style'
 const NAV_WAIT_TIMEOUT_MS = 8_000
@@ -67,6 +68,25 @@ async function initialize(): Promise<void> {
   }
   if (coursePage.courseEnded) {
     console.log('[DBKang] 课程已结课，退出')
+    return
+  }
+
+  try {
+    const service = await resolveRuntimeService({
+      localBaseUrl: __DBKANG_LOCAL_BASE_URL__,
+      fallbackBaseUrl: __DBKANG_FALLBACK_BASE_URL__,
+      localToolboxUrl: __DBKANG_LOCAL_TOOLBOX_URL__,
+      fallbackToolboxUrl: __DBKANG_FALLBACK_TOOLBOX_URL__,
+      probeHealth: async (healthUrl) => {
+        const health = await requestJson<{ status?: string }>(healthUrl, { timeoutMs: 1_200 })
+        return health.status === 'ok'
+      },
+    })
+    API_BASE_URL = service.apiBaseUrl
+    TOOLBOX_URL = service.toolboxUrl
+    console.log('[DBKang] 服务地址已就绪:', API_BASE_URL)
+  } catch (error) {
+    console.log('[DBKang] 本地与公网服务均不可用，退出:', error)
     return
   }
 
@@ -509,7 +529,7 @@ async function mapWithConcurrency<T, R>(
 
 function requestJson<T>(
   url: string,
-  options: { method?: string; body?: unknown } = {},
+  options: { method?: string; body?: unknown; timeoutMs?: number } = {},
 ): Promise<T> {
   const method = options.method || 'GET'
   const data = options.body === undefined ? undefined : JSON.stringify(options.body)
@@ -517,17 +537,24 @@ function requestJson<T>(
     method,
     body: data,
     headers: data ? { 'Content-Type': 'application/json' } : undefined,
+    timeoutMs: options.timeoutMs,
   }).then((text) => JSON.parse(text) as T)
 }
 
 function requestText(
   url: string,
-  options: { method?: string; body?: string; headers?: Record<string, string> } = {},
+  options: {
+    method?: string
+    body?: string
+    headers?: Record<string, string>
+    timeoutMs?: number
+  } = {},
 ): Promise<string> {
   const method = options.method || 'GET'
   const data = options.body
+  const timeoutMs = options.timeoutMs ?? 8_000
   if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
-    return chrome.runtime.sendMessage({
+    return withTimeout(chrome.runtime.sendMessage({
       type: 'DBKANG_HTTP',
       url,
       method,
@@ -536,7 +563,7 @@ function requestText(
     }).then((response) => {
       if (!response?.ok) throw new Error(response?.error || '阿康浏览器请求失败')
       return response.text
-    })
+    }), timeoutMs)
   }
   if (typeof GM_xmlhttpRequest === 'function') {
     return new Promise<string>((resolve, reject) => {
@@ -545,7 +572,7 @@ function requestText(
         url,
         data,
         headers: options.headers,
-        timeout: 8_000,
+        timeout: timeoutMs,
         onload: (response) => {
           if (response.status < 200 || response.status >= 300) {
             reject(new Error(`DBKang API ${response.status}`))
@@ -558,13 +585,25 @@ function requestText(
       })
     })
   }
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
   return fetch(url, {
     method,
     headers: options.headers,
     body: data,
     credentials: 'include',
+    signal: controller.signal,
   }).then(async (response) => {
     if (!response.ok) throw new Error(`DBKang API ${response.status}`)
     return response.text()
+  }).finally(() => {
+    window.clearTimeout(timeout)
+  })
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('DBKang API 请求超时')), timeoutMs)
+    promise.then(resolve, reject).finally(() => window.clearTimeout(timer))
   })
 }

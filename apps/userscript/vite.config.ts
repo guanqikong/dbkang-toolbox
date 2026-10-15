@@ -2,13 +2,27 @@ import { defineConfig, loadEnv } from 'vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '../../', '')
-  const apiBaseUrl = (env.VITE_DBKANG_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
-  const toolboxUrl = (env.VITE_DBKANG_TOOLBOX_URL || 'http://localhost:8000/toolbox').replace(/\/$/, '')
+  const localBaseUrl = (env.VITE_DBKANG_LOCAL_BASE_URL || env.VITE_DBKANG_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+  const fallbackBaseUrl = (
+    env.VITE_DBKANG_FALLBACK_BASE_URL ||
+    env.DBKANG_PUBLIC_BASE_URL ||
+    localBaseUrl
+  ).replace(/\/$/, '')
+  const localToolboxUrl = (
+    env.VITE_DBKANG_TOOLBOX_URL || `${localBaseUrl}/toolbox`
+  ).replace(/\/$/, '')
+  const fallbackToolboxUrl = `${fallbackBaseUrl}/toolbox`
+  const updateBaseUrl = (
+    env.VITE_DBKANG_UPDATE_BASE_URL ||
+    fallbackBaseUrl
+  ).replace(/\/$/, '')
   const version = env.DBKANG_VERSION || '0.1.0'
   const connectHosts = [
     'chaoxing.com',
     'chaoxing.cn',
-    new URL(apiBaseUrl).hostname,
+    new URL(localBaseUrl).hostname,
+    new URL(fallbackBaseUrl).hostname,
+    new URL(updateBaseUrl).hostname,
   ]
   const connectMetadata = [...new Set(connectHosts)]
     .map((host) => `// @connect      ${host}`)
@@ -24,8 +38,8 @@ export default defineConfig(({ mode }) => {
 // @grant        GM_xmlhttpRequest
 ${connectMetadata}
 // @run-at       document-idle
-// @updateURL    ${apiBaseUrl}/updates/DBKangToolbox.user.js
-// @downloadURL  ${apiBaseUrl}/updates/DBKangToolbox.user.js
+// @updateURL    ${updateBaseUrl}/updates/DBKangToolbox.user.js
+// @downloadURL  ${updateBaseUrl}/updates/DBKangToolbox.user.js
 // ==/UserScript==`
 
   return {
@@ -40,8 +54,10 @@ ${connectMetadata}
       },
     ],
     define: {
-      __DBKANG_API_BASE_URL__: JSON.stringify(apiBaseUrl),
-      __DBKANG_TOOLBOX_URL__: JSON.stringify(toolboxUrl),
+      __DBKANG_LOCAL_BASE_URL__: JSON.stringify(localBaseUrl),
+      __DBKANG_FALLBACK_BASE_URL__: JSON.stringify(fallbackBaseUrl),
+      __DBKANG_LOCAL_TOOLBOX_URL__: JSON.stringify(localToolboxUrl),
+      __DBKANG_FALLBACK_TOOLBOX_URL__: JSON.stringify(fallbackToolboxUrl),
     },
     build: {
       outDir: 'dist',
